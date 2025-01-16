@@ -8,8 +8,8 @@ const port = 3000
 var client_id = '0626b416c6164a5599c9c2c4af16d0b7';
 var client_secret = '569fe22a11754975b18b10eb1bd52aef';
 
-function searchForPlaylist(){
-
+function searchForPlaylist(keyword){
+  
 }
 function markPlaylist(){
 
