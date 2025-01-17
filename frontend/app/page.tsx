@@ -1,5 +1,5 @@
 'use client'
-
+import axios from "axios";
 
 export default function Home() {
   return (
@@ -11,17 +11,13 @@ export default function Home() {
         <img src="noun-vinyl-6402867.svg" className="w-2/5 opacity-[0.1] absolute"></img>
         <div className="rounded-full bg-red-800 border-4	border-red-900 w-[13%] aspect-square absolute"></div>
         <div className="rounded-full bg-white border-4	border-red-900 w-[2%] aspect-square absolute"></div>
-
       </div>
       <div className="flex flex-col items-start absolute ml-[60%]">
         <img src="Full_Logo_black_RGB.svg" className="h-6"></img>
-        <h1 className="text-black" style={{fontSize: "6vw", lineHeight: 1}}>Atlas</h1>
-        <a className="border-2 p-2 rounded-md text-black cursor-pointer" style={{fontSize: "1vw", lineHeight: 1}}>Sign In</a>
+        <h1 className="text-black text-8xl" >Atlas</h1>
+        <a className="border-2 p-2 mt-2 rounded-md text-gray-700  cursor-pointer" >Sign In</a>
       </div>
-      
-      
     </div>
-   
   );
 }
     
