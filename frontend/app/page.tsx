@@ -15,7 +15,7 @@ export default function Home() {
       <div className="flex flex-col items-center absolute">
         <img src="Full_Logo_White_RGB.svg" className="h-6 w-[50%]"></img>
         <h1 className="text-white" style={{fontSize: "6vw", lineHeight: 1}}>Atlas</h1>
-        <a className=" rounded-md text-gray-300 cursor-pointer" style={{fontSize: "1vw", lineHeight: 1}}>Sign In</a>
+        <a className=" rounded-md text-gray-200 cursor-pointer" href="http://localhost:8888/api/login" style={{fontSize: "1vw", lineHeight: 1}}>Sign In</a>
       </div>
       
       
