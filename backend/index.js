@@ -12,7 +12,7 @@ var client_secret = process.env.SPOTIFY_CLIENT_SECRET
 
 //Handles an error returned from the Spotify API
 //callback should be the original function call that must be retried
-//refreshTokenCallback should be the callback reformated to use an updated token
+//refreshTokenCallback should take a token and run the callback with the updated token
 function handleSpotifyError(error, callback, refreshTokenCallback){
   if(error.response && error.response.status === 401){
     //Reauthenticate and then call the callback
@@ -57,13 +57,26 @@ async function searchForPlaylist(token, search){
       }
     )
     //Determine next search term
+
+
   }catch (error){
     handleSpotifyError(error, ()=>{searchForPlaylist(token, search)}, (token)=>{searchForPlaylist(token, search)})
   }
 }
+
+function getCombinations(list) {
+  const result = []
+  for(var i = 0; i < list.length; i++){
+    for(var j = i+1; j < list.length; j++){
+      result.push([list[i], list[j]])
+    }
+  }
+  return result
+}
+
 async function markPlaylist(token, element){
   //First check if playlist is tracked
-
+  
 
   //Then update counter and summary
   try{
@@ -76,8 +89,11 @@ async function markPlaylist(token, element){
     })
     const name = element.name
     const tracks = response.data.items.filter(item=>item.track!==null).map(item=>item.track.id)
-    console.log(tracks)
     
+    //Get all n choose 2 combinations
+    for(const combo of getCombinations(tracks)){
+      //Make call to database to update embedding and tick up counter for songs 
+    }
   }catch(error){
     handleSpotifyError(error, ()=>{markPlaylist(token, element)}, (token)=>{markPlaylist(token, element)})
   }
