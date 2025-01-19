@@ -1,87 +1,110 @@
 //Switch to Go eventually
 
-const express = require('express')
 const axios = require('axios')
-const querystring = require('querystring')
 require('dotenv').config();
 
-const app = express()
+/**
+ * Database generation
+ */
 
 var client_id = '0626b416c6164a5599c9c2c4af16d0b7'
 var client_secret = process.env.SPOTIFY_CLIENT_SECRET 
-var redirect_uri = "http://localhost:8888/api/callback" //Also change
 
+//Handles an error returned from the Spotify API
+//callback should be the original function call that must be retried
+//refreshTokenCallback should be the callback reformated to use an updated token
+function handleSpotifyError(error, callback, refreshTokenCallback){
+  if(error.response && error.response.status === 401){
+    //Reauthenticate and then call the callback
+    console.log("Reauthenticating.")
+    refreshToken(refreshTokenCallback)
+  }else if(error.response && error.response.status === 429){
+    //Wait and then try again
+    console.log("Rate limit.")
+    const retryAfter = response.headers['retry-after'];
+    setTimeout(() => {
+      // Retry the request after the specified time
+      callback()
+    }, retryAfter * 1000);
+  }else{
+    //Try again
+    console.log("Unexpected failure.")
+    callback()
+  }
+}
 
-function searchForPlaylist(token, search){
-  axios({
-    method: 'get',
-    url : 'https://api.spotify.com/v1/search/',
-    headers: {
-      'Authorization': 'Bearer ' + token,
-    },
-    params : {
-      q: search,
-      type: 'playlist'
-    }
-  }).then(
-    response => {
-      if (response.status === 200) {
-        console.log(response.data)
+async function searchForPlaylist(token, search){
+  try{
+    const response = await axios({
+      method: 'get',
+      url : 'https://api.spotify.com/v1/search/',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+      },
+      params : {
+        q: search,
+        type: 'playlist'
       }
-    }
-  )
-}
-function markPlaylist(){
-  
-}
-
-const authOptions = {
-  method: 'post',
-  url: 'https://accounts.spotify.com/api/token',
-  headers: {
-    'Authorization': 'Basic ' + Buffer.from(client_id + ':' + client_secret).toString('base64'),
-  },
-  data: new URLSearchParams({
-    grant_type: 'client_credentials',
-  }).toString(),
-}
-
-axios(authOptions).then(response => {
-  if (response.status === 200) {
-    searchForPlaylist(response.data.access_token, "sad")
+    })
+      
+    //Mark playlists in database (async, requires it's own error handling)
+    response.data.playlists.items.forEach(
+      async element => {
+        //Fetch tracks
+        if(element) {
+          markPlaylist(token, element)
+        }
+      }
+    )
+    //Determine next search term
+  }catch (error){
+    handleSpotifyError(error, ()=>{searchForPlaylist(token, search)}, (token)=>{searchForPlaylist(token, search)})
   }
-})
+}
+async function markPlaylist(token, element){
+  //First check if playlist is tracked
 
 
-
-
-
-
-
-
-//API backend
-function generateRandomString(n) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < n; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  //Then update counter and summary
+  try{
+    const response = await axios({
+      method: 'get',
+      url : element.tracks.href,
+      headers: {
+        'Authorization': 'Bearer ' + token,
+      }
+    })
+    const name = element.name
+    const tracks = response.data.items.filter(item=>item.track!==null).map(item=>item.track.id)
+    console.log(tracks)
+    
+  }catch(error){
+    handleSpotifyError(error, ()=>{markPlaylist(token, element)}, (token)=>{markPlaylist(token, element)})
   }
-  return result;
 }
 
-app.get('/api/login', (req, res) => {
-  var state = generateRandomString(16);
-  var scope = 'user-read-private user-read-email';
+//Gets a fresh token then calls a callback function
+async function refreshToken(callback){
+  try {
+    const response = await axios({
+      method: 'post',
+      url: 'https://accounts.spotify.com/api/token',
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(client_id + ':' + client_secret).toString('base64'),
+      },
+      data: new URLSearchParams({
+        grant_type: 'client_credentials',
+      }).toString(),
+    })
+    callback(response.data.access_token)
+  } catch (error) {
+    //Try until it works
+    console.log("Failed to authenticate.")
+    refreshToken(callback)
+  }
+}
 
-  res.redirect('https://accounts.spotify.com/authorize?' +
-    querystring.stringify({
-      response_type: 'code',
-      client_id: client_id,
-      scope: scope,
-      redirect_uri: redirect_uri,
-      state: state
-    }));
-})
-app.listen(8888, ()=>{
-  console.log("Listening on 8888")
-})
+refreshToken(token => searchForPlaylist(token, "sad"))
+
+
+
