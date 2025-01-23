@@ -1,4 +1,3 @@
 Good things to put on resume
-//Determine next search term
-//First check if playlist is tracked
-//Make call to database to update embedding and tick up counter for songs 
+//Determine next search term (word2Vec)
+//Make call to database to update word list and tick up counter for songs 

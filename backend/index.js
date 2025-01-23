@@ -1,4 +1,12 @@
 //Switch to Go eventually
+const pgp = require('pg-promise')()
+const db = pgp({
+  host: 'localhost',        
+  port: 5432,               
+  database: 'music_db',         
+  user: 'postgres',           
+  password: 'admin',   
+})
 
 const axios = require('axios')
 require('dotenv').config();
@@ -76,7 +84,17 @@ function getCombinations(list) {
 
 async function markPlaylist(token, element){
   //First check if playlist is tracked
-  
+  try{
+    const data = await db.any(`SELECT * FROM playlists WHERE playlistID = '${element.id}'`)
+    if(data.length > 0){
+      console.log("PLAYLIST ALREADY LOGGED!")
+      return 
+    }
+    await db.none(`INSERT INTO playlists VALUES('${element.id}')`)
+  }catch(error){
+    console.log('ERROR:', error)
+  }
+
 
   //Then update counter and summary
   try{
@@ -89,7 +107,6 @@ async function markPlaylist(token, element){
     })
     const name = element.name
     const tracks = response.data.items.filter(item=>item.track!==null).map(item=>item.track.id)
-    
     //Get all n choose 2 combinations
     for(const combo of getCombinations(tracks)){
       //Make call to database to update embedding and tick up counter for songs 
