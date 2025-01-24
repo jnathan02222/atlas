@@ -65,7 +65,7 @@ async function searchForPlaylist(token, search){
       }
     )
     //Determine next search term
-
+    
 
   }catch (error){
     handleSpotifyError(error, ()=>{searchForPlaylist(token, search)}, (token)=>{searchForPlaylist(token, search)})
@@ -76,7 +76,7 @@ function getCombinations(list) {
   const result = []
   for(var i = 0; i < list.length; i++){
     for(var j = i+1; j < list.length; j++){
-      result.push([list[i], list[j]])
+      result.push([list[i], list[j]].sort())
     }
   }
   return result
@@ -85,14 +85,15 @@ function getCombinations(list) {
 async function markPlaylist(token, element){
   //First check if playlist is tracked
   try{
+    //WARNING - Potential race condition here!
     const data = await db.any(`SELECT * FROM playlists WHERE playlistID = '${element.id}'`)
     if(data.length > 0){
-      console.log("PLAYLIST ALREADY LOGGED!")
       return 
     }
-    await db.none(`INSERT INTO playlists VALUES('${element.id}')`)
+    db.none(`INSERT INTO playlists VALUES('${element.id}')`)
   }catch(error){
     console.log('ERROR:', error)
+    return
   }
 
 
@@ -110,6 +111,12 @@ async function markPlaylist(token, element){
     //Get all n choose 2 combinations
     for(const combo of getCombinations(tracks)){
       //Make call to database to update embedding and tick up counter for songs 
+      db.none(`INSERT INTO names VALUES('${combo[0]}','${combo[1]}','${name}')`)
+      db.none(`
+        INSERT INTO correlations VALUES('${combo[0]}','${combo[1]}',1)
+        ON CONFLICT (songA, songB) DO
+        UPDATE SET count = correlations.count + 1
+        `)
     }
   }catch(error){
     handleSpotifyError(error, ()=>{markPlaylist(token, element)}, (token)=>{markPlaylist(token, element)})

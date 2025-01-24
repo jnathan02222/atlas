@@ -1,3 +1,5 @@
 Good things to put on resume
 //Determine next search term (word2Vec)
 //Make call to database to update word list and tick up counter for songs 
+
+//Beware of race conditions!
