@@ -107,6 +107,7 @@ async function markPlaylist(token, element){
       }
     })
     const name = element.name
+    console.log(name)
     const tracks = response.data.items.filter(item=>item.track!==null).map(item=>item.track.id)
     //Get all n choose 2 combinations
     for(const combo of getCombinations(tracks)){
@@ -144,7 +145,7 @@ async function refreshToken(callback){
   }
 }
 
-refreshToken(token => searchForPlaylist(token, "sad"))
+refreshToken(token => searchForPlaylist(token, "indie movie"))
 
 
 
