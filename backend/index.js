@@ -21,23 +21,22 @@ var client_secret = process.env.SPOTIFY_CLIENT_SECRET
 //Handles an error returned from the Spotify API
 //callback should be the original function call that must be retried
 //refreshTokenCallback should take a token and run the callback with the updated token
-function handleSpotifyError(error, callback, refreshTokenCallback){
+async function handleSpotifyError(error, callback, refreshTokenCallback){
   if(error.response && error.response.status === 401){
     //Reauthenticate and then call the callback
     console.log("Reauthenticating.")
-    refreshToken(refreshTokenCallback)
+    await refreshToken(refreshTokenCallback)
   }else if(error.response && error.response.status === 429){
     //Wait and then try again
     console.log("Rate limit.")
     const retryAfter = response.headers['retry-after'];
-    setTimeout(() => {
-      // Retry the request after the specified time
-      callback()
-    }, retryAfter * 1000);
+    // Retry the request after the specified time
+    await new Promise(resolve => setTimeout(resolve, retryAfter * 1000))
+    await callback()
   }else{
     //Try again
     console.log("Unexpected failure.")
-    callback()
+    await callback()
   }
 }
 
@@ -69,7 +68,7 @@ async function searchForPlaylist(token, search){
     //Determine next search term
     console.log("DONE")
   }catch (error){
-    handleSpotifyError(error, ()=>{searchForPlaylist(token, search)}, (token)=>{searchForPlaylist(token, search)})
+    await handleSpotifyError(error, ()=>{searchForPlaylist(token, search)}, (token)=>{searchForPlaylist(token, search)})
   }
 }
 
@@ -106,6 +105,7 @@ async function markPlaylist(token, element){
   
           //If the correlation is being tracked
           const data = await db.any(`SELECT * FROM correlations WHERE songA = '${combo[0]}' AND songB = '${combo[1]}'`)
+          console.log(combo)
           if(data.length > 0){
             try{
               //Check if the playlist is being tracked. Fails if the correlation already exists for this playlist
@@ -125,7 +125,7 @@ async function markPlaylist(token, element){
     )
 
   }catch(error){
-    handleSpotifyError(error, ()=>{markPlaylist(token, element)}, (token)=>{markPlaylist(token, element)})
+    await handleSpotifyError(error, ()=>{markPlaylist(token, element)}, (token)=>{markPlaylist(token, element)})
   }
 }
 
@@ -142,11 +142,11 @@ async function refreshToken(callback){
         grant_type: 'client_credentials',
       }).toString(),
     })
-    callback(response.data.access_token)
+    await callback(response.data.access_token)
   } catch (error) {
     //Try until it works
     console.log("Failed to authenticate.")
-    refreshToken(callback)
+    await refreshToken(callback)
   }
 }
 
