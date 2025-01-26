@@ -10,13 +10,13 @@ const db = pgp({
 
 const axios = require('axios')
 require('dotenv').config();
+var client_id = '0626b416c6164a5599c9c2c4af16d0b7'
+var client_secret = process.env.SPOTIFY_CLIENT_SECRET 
 
 /**
  * Database generation
  */
 
-var client_id = '0626b416c6164a5599c9c2c4af16d0b7'
-var client_secret = process.env.SPOTIFY_CLIENT_SECRET 
 
 //Handles an error returned from the Spotify API
 //callback should be the original function call that must be retried
@@ -83,20 +83,6 @@ function getCombinations(list) {
 }
 
 async function markPlaylist(token, element){
-  //First check if playlist is tracked
-  try{
-    //WARNING - Potential race condition here!
-    const data = await db.any(`SELECT * FROM playlists WHERE playlistID = '${element.id}'`)
-    if(data.length > 0){
-      return 
-    }
-    db.none(`INSERT INTO playlists VALUES('${element.id}')`)
-  }catch(error){
-    console.log('ERROR:', error)
-    return
-  }
-
-
   //Then update counter and summary
   try{
     const response = await axios({
@@ -111,13 +97,28 @@ async function markPlaylist(token, element){
     const tracks = response.data.items.filter(item=>item.track!==null).map(item=>item.track.id)
     //Get all n choose 2 combinations
     for(const combo of getCombinations(tracks)){
-      //Make call to database to update embedding and tick up counter for songs 
-      db.none(`INSERT INTO names VALUES('${combo[0]}','${combo[1]}','${name}')`)
-      db.none(`
-        INSERT INTO correlations VALUES('${combo[0]}','${combo[1]}',1)
-        ON CONFLICT (songA, songB) DO
-        UPDATE SET count = correlations.count + 1
-        `)
+      (async () => {
+        //POTENTIAL FOR SPEEDUP 
+        //BEWARE OF CONCURRENCY ISSUES
+
+        //If the correlation is being tracked
+        const data = await db.any(`SELECT * FROM correlations WHERE songA = '${combo[0]}' AND songB = '${combo[1]}'`)
+        if(data.length > 0){
+          try{
+            //Check if the playlist is being tracked. Fails if the correlation already exists for this playlist
+            await db.none(`INSERT INTO names VALUES('${combo[0]}','${combo[1]}','${element.id}')`)
+            //Iterate correlation count
+            db.none(`
+              UPDATE correlations 
+              SET count = correlations.count + 1 
+              WHERE songA = '${combo[0]}' AND songB = '${combo[1]}'
+              `)
+          }catch(error){
+  
+          }
+        }
+      })()
+      
     }
   }catch(error){
     handleSpotifyError(error, ()=>{markPlaylist(token, element)}, (token)=>{markPlaylist(token, element)})
