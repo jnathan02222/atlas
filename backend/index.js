@@ -56,17 +56,18 @@ async function searchForPlaylist(token, search){
     })
       
     //Mark playlists in database (async, requires it's own error handling)
-    response.data.playlists.items.forEach(
-      async element => {
-        //Fetch tracks
-        if(element) {
-          markPlaylist(token, element)
+    await Promise.all(
+      response.data.playlists.items.map(
+        async element => {
+          //Fetch tracks
+          if(element) {
+            await markPlaylist(token, element)
+          }
         }
-      }
+      )
     )
     //Determine next search term
-    
-
+    console.log("DONE")
   }catch (error){
     handleSpotifyError(error, ()=>{searchForPlaylist(token, search)}, (token)=>{searchForPlaylist(token, search)})
   }
@@ -94,32 +95,35 @@ async function markPlaylist(token, element){
     })
     const name = element.name
     console.log(name)
+
     const tracks = response.data.items.filter(item=>item.track!==null).map(item=>item.track.id)
     //Get all n choose 2 combinations
-    for(const combo of getCombinations(tracks)){
-      (async () => {
-        //POTENTIAL FOR SPEEDUP 
-        //BEWARE OF CONCURRENCY ISSUES
-
-        //If the correlation is being tracked
-        const data = await db.any(`SELECT * FROM correlations WHERE songA = '${combo[0]}' AND songB = '${combo[1]}'`)
-        if(data.length > 0){
-          try{
-            //Check if the playlist is being tracked. Fails if the correlation already exists for this playlist
-            await db.none(`INSERT INTO names VALUES('${combo[0]}','${combo[1]}','${element.id}')`)
-            //Iterate correlation count
-            db.none(`
-              UPDATE correlations 
-              SET count = correlations.count + 1 
-              WHERE songA = '${combo[0]}' AND songB = '${combo[1]}'
-              `)
-          }catch(error){
+    await Promise.all(
+      getCombinations(tracks).map(
+        async combo => {
+          //POTENTIAL FOR SPEEDUP 
+          //BEWARE OF CONCURRENCY ISSUES
   
+          //If the correlation is being tracked
+          const data = await db.any(`SELECT * FROM correlations WHERE songA = '${combo[0]}' AND songB = '${combo[1]}'`)
+          if(data.length > 0){
+            try{
+              //Check if the playlist is being tracked. Fails if the correlation already exists for this playlist
+              await db.none(`INSERT INTO names VALUES('${combo[0]}','${combo[1]}','${element.id}')`)
+              //Iterate correlation count
+              await db.none(`
+                UPDATE correlations 
+                SET count = correlations.count + 1 
+                WHERE songA = '${combo[0]}' AND songB = '${combo[1]}'
+                `)
+            }catch(error){
+    
+            }
           }
         }
-      })()
-      
-    }
+      )
+    )
+
   }catch(error){
     handleSpotifyError(error, ()=>{markPlaylist(token, element)}, (token)=>{markPlaylist(token, element)})
   }
