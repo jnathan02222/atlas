@@ -2,3 +2,4 @@ Good things to put on resume
 //Determine next search term (word2Vec) after all promises resolve
 //Make call to database to update word list and tick up counter for songs 
 
+On sign in / guest go to next screen 

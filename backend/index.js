@@ -103,18 +103,17 @@ async function markPlaylist(token, element){
           //POTENTIAL FOR SPEEDUP 
           //BEWARE OF CONCURRENCY ISSUES
   
-          //If the correlation is being tracked
-          const data = await db.any(`SELECT * FROM correlations WHERE songA = '${combo[0]}' AND songB = '${combo[1]}'`)
-          console.log(combo)
-          if(data.length > 0){
+          //If both songs are being tracked
+          const data = await db.any(`SELECT * FROM songs WHERE song = '${combo[0]}' OR song = '${combo[1]}'`)
+          if(data.length == 2){
             try{
               //Check if the playlist is being tracked. Fails if the correlation already exists for this playlist
               await db.none(`INSERT INTO names VALUES('${combo[0]}','${combo[1]}','${element.id}')`)
-              //Iterate correlation count
+              //Upsert correlation count
               await db.none(`
-                UPDATE correlations 
-                SET count = correlations.count + 1 
-                WHERE songA = '${combo[0]}' AND songB = '${combo[1]}'
+                INSERT INTO correlations VALUES('${combo[0]}','${combo[1]}',1)
+                ON CONFLICT (songA, songB) DO
+                UPDATE SET count = correlations.count + 1
                 `)
             }catch(error){
     

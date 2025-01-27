@@ -1,6 +1,20 @@
 const express = require('express')
 const app = express()
+const axios = require('axios')
+const pgp = require('pg-promise')()
+const db = pgp({
+  host: 'localhost',        
+  port: 5432,               
+  database: 'music_db',         
+  user: 'postgres',           
+  password: 'admin',   
+})
+require('dotenv').config();
+
+
 var redirect_uri = "http://localhost:8888/api/callback" //Also change
+var client_id = '0626b416c6164a5599c9c2c4af16d0b7'
+var client_secret = process.env.SPOTIFY_CLIENT_SECRET 
 
 /**
  * API Backend
@@ -15,12 +29,43 @@ function generateRandomString(n) {
   return result;
 }
 
+app.get('/api/callback', (req, res) => {
+  var code = req.query.code || null;
+  var state = req.query.state || null;
+
+  if (state === null) {
+    //lol
+  } else {
+    axios({
+      method: 'post',
+      url: 'https://accounts.spotify.com/api/token',
+      headers: {
+        'Authorization': 'Basic ' + (new Buffer.from(client_id + ':' + client_secret).toString('base64')),
+      },
+      data: new URLSearchParams({
+        code: code,
+        redirect_uri: redirect_uri,
+        grant_type: 'authorization_code',
+      }).toString(),
+    }).then(
+      (response) => {
+        res.cookie('spotify_token', response.data.access_token);
+        res.redirect("http://localhost:3000/")
+      }
+    ).catch(
+      (error)=> {
+        //oopsy
+      }
+    )
+  }
+})
+
 app.get('/api/login', (req, res) => {
   var state = generateRandomString(16);
   var scope = 'user-read-private user-read-email';
 
   res.redirect('https://accounts.spotify.com/authorize?' +
-    querystring.stringify({
+    new URLSearchParams({
       response_type: 'code',
       client_id: client_id,
       scope: scope,
