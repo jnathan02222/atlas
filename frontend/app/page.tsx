@@ -8,12 +8,14 @@ import axios from "axios";
 
 export default function App() {
   const [showMap, setShowMap] = useState<boolean>(false)
+  const [fadeIn, setFadeIn] = useState(false)
+
   useEffect(()=>{
     
   }, [])
   
   
-  function Home({setShowMap} : {setShowMap : React.Dispatch<React.SetStateAction<boolean>>}){
+  function Home({signInHandler} : {signInHandler : ()=> void}){
     return (
       <div className="flex min-h-screen  items-center  w-screen overflow-hidden select-none">
         <div className="flex items-center justify-center w-1/2 min-h-screen ml-[10%]">
@@ -30,7 +32,7 @@ export default function App() {
           <h1 className="text-black text-8xl">Atlas</h1>
           <div className="flex">
             <a href="http://localhost:8888/api/login" className="transition-color duration-300 hover:border-[#887880] border-2 p-2 mt-2 rounded-md text-gray-700  cursor-pointer" >Sign In</a>
-            <button onClick={()=>{setShowMap(true)}} className="transition-color duration-300 hover:border-[#887880] border-2 p-2 ml-2 mt-2 rounded-md text-gray-700  cursor-pointer">Guest</button>
+            <button onClick={signInHandler} className="transition-color duration-300 hover:border-[#887880] border-2 p-2 ml-2 mt-2 rounded-md text-gray-700  cursor-pointer">Guest</button>
           </div>
 
         </div>
@@ -52,8 +54,8 @@ export default function App() {
       return (
         <div className="flex justify-center">
           <div>
-            <h1 className="text-3xl text-gray-600 text-center">We're in uncharted waters here...</h1>
-            <h2 className="text-gray-600 text-center">Contribute to add this song!</h2>
+            <h1 className="text-2xl text-gray-600 text-center">We're in uncharted waters here...</h1>
+            <h2 className="text-gray-600 text-center ">Contribute to add this song!</h2>
           </div>
         </div>
       )
@@ -66,9 +68,39 @@ export default function App() {
       )
     }
     function Contribute(){
+      const [showSearch, setShowSearch] = useState(false);
+      const [fadeIn, setFadeIn] = useState(false);
+      async function searchQuery(e : React.FormEvent<HTMLInputElement>){
+        var result = await axios({
+          method: 'get',
+          url : 'http://localhost:8888/api/search/playlist',
+          params: {
+            q: e.currentTarget.value.trim()
+          },
+        })
+        console.log(result)
+      }
       return (
         <>
-          <button className="transition-color duration-300 border-2 p-2  rounded-md text-gray-700 cursor-pointer hover:border-[#887880]">Contribute</button>
+          <div className={`duration-500 transition  ${fadeIn ? "opacity-80" : "opacity-0"}`}>
+            {showSearch && 
+              <div className="top-0 left-0 absolute w-screen h-screen bg-black flex justify-center items-start pt-48">
+                <div onClick={()=>{
+                  setFadeIn(false)
+                  setTimeout(()=>setShowSearch(false), 500)
+
+                  }} className="top-0 left-0 w-full h-full absolute"></div>
+                <input onChange={searchQuery} placeholder="Search for a playlist" className={`z-10 transition bg-transparent duration-300 border-2 p-2 rounded-md text-white w-96 border-[#887880] hover:border-white focus:border-white focus:outline-none`}></input>
+
+              </div>
+            }
+          </div>
+         
+          
+          <button onClick={()=>{
+            setShowSearch(true) 
+            setFadeIn(true)
+          }} className="transition-color duration-300 border-2 p-2  rounded-md text-gray-700 cursor-pointer hover:border-[#887880]">Contribute</button>
         </>
       )
     }
@@ -80,6 +112,7 @@ export default function App() {
           <div className="flex gap-1">
             <Search></Search>
             <Contribute></Contribute>
+
           </div>
           <button className="transition-color duration-300 border-2 p-2 w-12 h-12 rounded-full text-gray-700 cursor-pointer hover:border-[#887880]">?</button>
         </div>
@@ -89,11 +122,16 @@ export default function App() {
 
   return (
     <div className="overflow-hidden">
-      <div className={`duration-500 transition  ${showMap ? "translate-y-[10%] opacity-0" : ""}`}>
-        <Home setShowMap={setShowMap}></Home>
+      <div className={`duration-500 transition  ${fadeIn ? "translate-y-[10%] opacity-0" : ""}`}>
+        {!showMap && <Home signInHandler={
+          ()=>{
+            setFadeIn(true)
+            setTimeout(()=>{setShowMap(true)}, 500)
+          }
+          }></Home>}  
       </div>
-      <div className={`absolute top-0 duration-500 transition  ${showMap ? "" : "opacity-0 -translate-y-[10%]"}`}>
-        {showMap && <Map></Map>}
+      <div className={`absolute top-0 duration-500 transition  ${fadeIn ? "" : "opacity-0 -translate-y-[10%]"}`}>
+        {fadeIn && <Map></Map> /**/} 
       </div>
       
     </div>

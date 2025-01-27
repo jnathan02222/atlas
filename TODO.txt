@@ -28,3 +28,9 @@ Extra
 -Explainer (?) button 
 -Show playlist songs when contributing
 -Pausing/playing music?
+-SPOTIFY HOMETOWN
+
+Embeddings
+-Script to go through all unique playlists and get embedding, store in vector database (only has to run if it's not in the DB)
+-Script to take a song, get all the playlists it's in and get the best descriptor of it using k cluster, then store it
+-Advanced feature: regional summary of many songs together

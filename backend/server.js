@@ -1,5 +1,8 @@
 const express = require('express')
+const cookieParser = require("cookie-parser");
 const app = express()
+app.use(cookieParser());
+
 const axios = require('axios')
 const pgp = require('pg-promise')()
 const db = pgp({
@@ -30,6 +33,32 @@ function generateRandomString(n) {
 }
 
 // /api/search/playlist
+app.get('/api/search/playlist', (req, res) => {
+  console.log(req.query.q)
+  console.log(req.cookies['spotify_token'])
+  axios({
+    method: 'get',
+    url : 'https://api.spotify.com/v1/search/',
+    headers: {
+      'Authorization': 'Bearer ' + req.cookies['spotify_token'],
+    },
+    params: {
+      q: req.query.q,
+      type: 'playlist',
+      limit: 10
+    }
+  }).then(
+    response => {
+      console.log(response.data)
+      res.json(response.data)
+    }
+  ).catch(
+    error => {
+      //Bruh
+    }
+  )
+
+})
 // /api/search/track 
 // /api/contribute 
 // /api/neighbours
