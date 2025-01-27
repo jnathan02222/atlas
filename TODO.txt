@@ -16,10 +16,15 @@ Search
 Display
 -Given a center track and it's neighbours, render
 -Center on new track, add neighbours to it 
--cache and don't remove others 
+-cache and don't remove others (but maybe stop rendering)
 -Hover to show information
 -Big label to say the region
 
 Player
 -When a vinyl is clicked start playing music and update text / location
     -Do it on successful search?
+
+Extra
+-Explainer (?) button 
+-Show playlist songs when contributing
+-Pausing/playing music?

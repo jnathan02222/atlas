@@ -82,7 +82,6 @@ export default function App() {
             <Contribute></Contribute>
           </div>
           <button className="transition-color duration-300 border-2 p-2 w-12 h-12 rounded-full text-gray-700 cursor-pointer hover:border-[#887880]">?</button>
-
         </div>
       </div>
     )
