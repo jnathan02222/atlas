@@ -50,7 +50,12 @@ export default function App() {
     }
     function Vinyls(){
       return (
-        <></>
+        <div className="flex justify-center">
+          <div>
+            <h1 className="text-3xl text-gray-600 text-center">We're in uncharted waters here...</h1>
+            <h2 className="text-gray-600 text-center">Contribute to add this song!</h2>
+          </div>
+        </div>
       )
     }
     function Search(){
@@ -64,7 +69,6 @@ export default function App() {
       return (
         <>
           <button className="transition-color duration-300 border-2 p-2  rounded-md text-gray-700 cursor-pointer hover:border-[#887880]">Contribute</button>
-
         </>
       )
     }
