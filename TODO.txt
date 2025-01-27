@@ -2,4 +2,24 @@ Good things to put on resume
 //Determine next search term (word2Vec) after all promises resolve
 //Make call to database to update word list and tick up counter for songs 
 
-On sign in / guest go to next screen 
+Contribute
+-Show search bar when button is clicked
+-Search bar shows playlists
+-When one is clicked, lock frontend
+-Tell backend to write into db
+
+Search 
+-Search bar shows songs 
+-On click (or enter for keyword), send text or track id to backend
+-Backend returns neighbours
+
+Display
+-Given a center track and it's neighbours, render
+-Center on new track, add neighbours to it 
+-cache and don't remove others 
+-Hover to show information
+-Big label to say the region
+
+Player
+-When a vinyl is clicked start playing music and update text / location
+    -Do it on successful search?

@@ -29,6 +29,12 @@ function generateRandomString(n) {
   return result;
 }
 
+// /api/search/playlist
+// /api/search/track 
+// /api/contribute 
+// /api/neighbours
+// /api/player/play 
+
 app.get('/api/callback', (req, res) => {
   var code = req.query.code || null;
   var state = req.query.state || null;

@@ -76,9 +76,13 @@ export default function App() {
       <div className="w-screen h-screen flex flex-col justify-between p-16">
         <Player></Player>
         <Vinyls></Vinyls>
-        <div className="flex justify-between ">
-          <Search></Search>
-          <Contribute></Contribute>
+        <div className="flex justify-between">
+          <div className="flex gap-1">
+            <Search></Search>
+            <Contribute></Contribute>
+          </div>
+          <button className="transition-color duration-300 border-2 p-2 w-12 h-12 rounded-full text-gray-700 cursor-pointer hover:border-[#887880]">?</button>
+
         </div>
       </div>
     )
