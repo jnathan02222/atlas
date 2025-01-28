@@ -33,9 +33,8 @@ function generateRandomString(n) {
 }
 
 // /api/search/playlist
-app.get('/api/search/playlist', (req, res) => {
-  console.log(req.query.q)
-  console.log(req.cookies['spotify_token'])
+app.get('/api/search', (req, res) => {
+  
   axios({
     method: 'get',
     url : 'https://api.spotify.com/v1/search/',
@@ -44,12 +43,11 @@ app.get('/api/search/playlist', (req, res) => {
     },
     params: {
       q: req.query.q,
-      type: 'playlist',
+      type: req.query.type,
       limit: 10
     }
   }).then(
     response => {
-      console.log(response.data)
       res.json(response.data)
     }
   ).catch(

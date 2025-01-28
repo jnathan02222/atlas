@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 //https://coolors.co/cb3342-686963-8aa29e-3d5467-f1edee
 //https://coolors.co/8a4f7d-887880-88a096-bbab8b-ef8275
@@ -41,24 +41,28 @@ export default function App() {
   }
 
   function Map(){
+    const [selectedSong, setSelectedSong] = useState<{name : string, author : string, album : string, id : string}>({name : "", author : "", album : "", id : ""})    
+
     function Player(){
       //<div className="bg-black mr-5 rounded-sm" style={{width: 112, height: 112}}></div>
 
       return (
         <div className="flex items-center">
+          {selectedSong.id !== "" &&
+            <div>
+              <h1 className="text-5xl">{selectedSong.name}</h1>
+              <h2 className="pt-2">{`${selectedSong.author} - ${selectedSong.album}`}</h2>
+              <h2 className="pt-2 text-gray-500">38.8951, -77.0364</h2>
+            </div>
+          }
           
-          <div>
-            <h1 className="text-5xl">My Love Mine All Mine</h1>
-            <h2 className="pt-2">{"Mitski - The Land is Inhospitable and So Are We"}</h2>
-            <h2 className="pt-2 text-gray-500">38.8951, -77.0364</h2>
-          </div>
           
         </div>
       )
     }
     function Vinyls(){
       return (
-        <div className="flex justify-center">
+        <div className="flex justify-center items-center absolute top-0 left-0 w-screen h-screen -z-10">
           <div>
             <h1 className="text-2xl text-gray-400 text-center">We're in uncharted waters here...</h1>
             <h2 className="text-gray-400 text-center ">Contribute to add this song!</h2>
@@ -66,43 +70,126 @@ export default function App() {
         </div>
       )
     }
+
+    function SearchBar({growDown, light, placeholder, type, onClick} : {growDown : boolean, light : boolean, placeholder : string, type : "playlist" | "track", onClick : (data : {name : string, author : string, album : string, id : string}) => void}){
+      const [query, setQuery] = useState("");
+      const [searchResults, setSearchResults] = useState<Array<{name : string, author : string, album : string, id : string}>>([]);
+      const latestTimestamp = useRef(0);
+
+      //Use latest timestamp to ensure latest result is used
+      function setCurrentSearchResults(results : Array<{name : string, author : string, album : string, id : string}>, timestamp : number){
+        if(timestamp > latestTimestamp.current){
+          latestTimestamp.current = timestamp;
+          setSearchResults(results);
+        }
+      }
+      <input placeholder="Search by keyword or song..." ></input>
+
+      
+      async function searchQuery(e : React.FormEvent<HTMLInputElement>){
+        setQuery(e.currentTarget.value);
+        
+        const timestamp = Date.now();
+
+        if( e.currentTarget.value.trim() == ""){
+          setCurrentSearchResults([], timestamp);
+          return;
+        }
+        
+        var result = await axios({
+          method: 'get',
+          url : '/api/search',
+          params: {
+            q: e.currentTarget.value.trim(),
+            type: type
+          },
+        })
+        setCurrentSearchResults(
+          result.data[`${type}s`].items.filter((item : Record<string, any>) => item).map(
+            (item : Record<string, any>) => 
+              {
+                console.log(item)
+                if(type === "track"){
+                  return {
+                    name : item.name, 
+                    author : item.artists.map((artist : Record<string, any>) => artist.name).join(", "),
+                    id : item.id,
+                    album : item.album.name
+                  }
+                }
+                return {
+                  name : item.name, 
+                  author : item.owner.display_name,
+                  id : item.id,
+                  album : ""
+                }
+              }
+            ), timestamp)
+
+      }
+      function results(){
+        return (searchResults.length > 0 && 
+          <div className={` border-2 rounded-md  ${light ? "border-[#887880]" : "bg-white"} ${growDown ? "border-t-0 rounded-t-none" : "border-b-0 rounded-b-none pt-0"}`} style={{width: 560}}>
+          {
+            searchResults.map(
+              (data : {name : string, author : string, album : string, id : string}, i : number) => {
+                return (<button onClick={(e)=>{
+                  e.preventDefault()
+                  onClick(data)
+                  setQuery(`${data.name} - ${data.author}`)
+
+                  }} className={`flex text-left w-full p-2 ${growDown ? "" : ""}  ${light ? "text-white hover:bg-gray-900" : "text-black hover:bg-gray-100"}`} key={i}>
+                  <div className="text-ellipsis truncate">{data.name}</div>
+                  <div className="pl-2 pr-2">-</div>
+                  <div className="text-nowrap">{data.author}</div>
+                </button>)
+              }
+            )
+          }
+          </div>
+          ) 
+      } 
+
+      return (
+        <div>
+          {!growDown && results()}
+          <input value={query} onChange={searchQuery} style={{width: 560}} placeholder={placeholder} className={` ${light ? "transition bg-transparent duration-300 border-2 p-2 rounded-md text-white border-[#887880] hover:border-white focus:border-white focus:outline-none" : "transition-color duration-300 border-2 p-2 rounded-md text-gray-700 w-96 hover:border-[#887880] focus:border-[#887880] focus:outline-none"}`}></input>
+          {growDown && results()}
+        </div>
+      )
+
+    }
+
     function Search(){
       return (
         <>
-          <input placeholder="Search by keyword or song..." className="transition-color duration-300 border-2 p-2 rounded-md text-gray-700 w-96 hover:border-[#887880] focus:border-[#887880] focus:outline-none"></input>
+          <SearchBar type="track" growDown={false} light={false} placeholder="Search by track or keyword" onClick={(data)=>{setSelectedSong(data)}}></SearchBar>
         </>
       )
     }
+
     function Contribute(){
       const [showSearch, setShowSearch] = useState(false);
       const [fadeIn, setFadeIn] = useState(false);
-      async function searchQuery(e : React.FormEvent<HTMLInputElement>){
-        var result = await axios({
-          method: 'get',
-          url : 'http://localhost:8888/api/search/playlist',
-          params: {
-            q: e.currentTarget.value.trim()
-          },
-        })
-        console.log(result)
-      }
+
       return (
         <>
-          <div className={`duration-500 transition  ${fadeIn ? "opacity-80" : "opacity-0"}`}>
+          <div className={`duration-300 transition  ${fadeIn ? "opacity-80" : "opacity-0"}`}>
             {showSearch && 
               <div className="top-0 left-0 absolute w-screen h-screen bg-black flex justify-center items-start pt-48">
-                <div onClick={()=>{
+
+                  <div className="z-10">
+                    <SearchBar type="playlist" growDown={true} light={true} placeholder="Search for a playlist" onClick={(data)=>{}}></SearchBar>
+                  </div>
+                  <div onClick={()=>{
                   setFadeIn(false)
-                  setTimeout(()=>setShowSearch(false), 500)
+                  setTimeout(()=>setShowSearch(false), 300)
 
                   }} className="top-0 left-0 w-full h-full absolute"></div>
-                <input onChange={searchQuery} placeholder="Search for a playlist" className={`z-10 transition bg-transparent duration-300 border-2 p-2 rounded-md text-white w-96 border-[#887880] hover:border-white focus:border-white focus:outline-none`}></input>
-
               </div>
             }
           </div>
-         
-          
+
           <button onClick={()=>{
             setShowSearch(true) 
             setFadeIn(true)
@@ -114,8 +201,8 @@ export default function App() {
       <div className="w-screen h-screen flex flex-col justify-between p-16">
         <Player></Player>
         <Vinyls></Vinyls>
-        <div className="flex justify-between">
-          <div className="flex gap-1">
+        <div className="flex justify-between items-end">
+          <div className="flex gap-1 items-end">
             <Search></Search>
             <Contribute></Contribute>
 
