@@ -42,11 +42,17 @@ export default function App() {
 
   function Map(){
     function Player(){
+      //<div className="bg-black mr-5 rounded-sm" style={{width: 112, height: 112}}></div>
+
       return (
-        <div className="">
-          <h1 className="text-5xl">My Love Mine All Mine</h1>
-          <h2 className="pt-2">{"Mitski - The Land is Inhospitable and So Are We"}</h2>
-          <h2 className="pt-2 text-gray-500">38.8951, -77.0364</h2>
+        <div className="flex items-center">
+          
+          <div>
+            <h1 className="text-5xl">My Love Mine All Mine</h1>
+            <h2 className="pt-2">{"Mitski - The Land is Inhospitable and So Are We"}</h2>
+            <h2 className="pt-2 text-gray-500">38.8951, -77.0364</h2>
+          </div>
+          
         </div>
       )
     }
@@ -54,8 +60,8 @@ export default function App() {
       return (
         <div className="flex justify-center">
           <div>
-            <h1 className="text-2xl text-gray-600 text-center">We're in uncharted waters here...</h1>
-            <h2 className="text-gray-600 text-center ">Contribute to add this song!</h2>
+            <h1 className="text-2xl text-gray-400 text-center">We're in uncharted waters here...</h1>
+            <h2 className="text-gray-400 text-center ">Contribute to add this song!</h2>
           </div>
         </div>
       )
