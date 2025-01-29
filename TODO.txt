@@ -5,14 +5,24 @@ Good things to put on resume
 Contribute
 -Show search bar when button is clicked DONE
 -Search bar shows playlists DONE
--When one is clicked, lock frontend
--Tell backend to write into db
+-Show playlist songs when contributing <---
+-When one is submitted, lock frontend  <---
+-Tell backend to write into db  <---
 
 Search 
 -Search bar shows songs DONE
--Search without sign in
+-Search without sign in + error handling  <---
+    -Auto sign in if cookie works, store whether in guest mode somewhere <or maybe just check with backend>?  <---
 -On click (or enter for keyword), send text or track id to backend
 -Backend returns neighbours
+
+Player
+-When a vinyl is clicked start playing music and update text / location  <---
+-Randomized coordinates for now?  <---
+-Long titles move side to side <---
+    -Do it on successful search?
+-Read for error handling: https://developer.spotify.com/documentation/web-playback-sdk
+-Interactions when something else is playing?
 
 Display
 -Given a center track and it's neighbours, render
@@ -21,18 +31,16 @@ Display
 -Hover to show information
 -Big label to say the region
 
-Player
--When a vinyl is clicked start playing music and update text / location 
-    -Do it on successful search?
+
 
 Extra
 -Explainer (?) button 
--Show playlist songs when contributing
 -Pausing/playing music?
--SPOTIFY HOMETOWN
-    -Get top songs, take best summaries (see below) and apply k-cluster for biggest set
+-Really good documentation (backend endpoints and code flow, database interactions)
 
 Embeddings
+-SPOTIFY HOMETOWN
+    -Get top songs, take best summaries (see below) and apply k-cluster for biggest set
 -Script to go through all unique playlists and get embedding, store in vector database (only has to run if it's not in the DB)
 -Script to take a song, get all the playlists it's in and get the best descriptor of it using k cluster, then store it
 -Advanced feature: regional summary of many songs together

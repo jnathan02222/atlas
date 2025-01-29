@@ -44,7 +44,7 @@ app.get('/api/search', (req, res) => {
     params: {
       q: req.query.q,
       type: req.query.type,
-      limit: 10
+      limit: 8
     }
   }).then(
     response => {
@@ -57,10 +57,10 @@ app.get('/api/search', (req, res) => {
   )
 
 })
-// /api/search/track 
+
 // /api/contribute 
 // /api/neighbours
-// /api/player/play 
+// /api/play-track
 
 app.get('/api/callback', (req, res) => {
   var code = req.query.code || null;
@@ -95,7 +95,7 @@ app.get('/api/callback', (req, res) => {
 
 app.get('/api/login', (req, res) => {
   var state = generateRandomString(16);
-  var scope = 'user-read-private user-read-email';
+  var scope = 'user-read-private user-read-email streaming';
 
   res.redirect('https://accounts.spotify.com/authorize?' +
     new URLSearchParams({
