@@ -74,10 +74,11 @@ const SearchBar = ({boxWidth, growDown, light, placeholder, type, onClick} : { b
               onClick(data)
               setQuery(`${data.name} - ${data .author}`)
 
-              }} className={`flex text-left w-full p-2 overflow-hidden ${growDown ? "" : ""}  ${light ? "text-white hover:bg-gray-900" : "text-black hover:bg-gray-100"}`} key={i}>
-              <div className="text-ellipsis text-nowrap">{data.name}</div>
+              }} className={`flex text-left w-full p-2  ${growDown ? "" : ""}  ${light ? "text-white hover:bg-gray-900" : "text-black hover:bg-gray-100"}`} key={i}>
+              <div className="text-ellipsis truncate text-nowrap min-w-0">{data.name}</div>
               <div className="pl-2 pr-2">-</div>
-              <div className="text-nowrap">{data.author}</div>
+              <div className="text-ellipsis text-nowrap truncate min-w-36">{data.author}</div>
+
             </button>)
           }
         )
@@ -123,7 +124,8 @@ function Home({signInHandler} : {signInHandler : ()=> void}){
 
 function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 112, height: 112}}></div>
   const selectedSong = useContext(PlayerContext).value
-  const scriptsLoaded = useRef<boolean>(false);
+  const scriptsLoaded = useRef(false);
+  const sliderRef = useRef(null);
 
   function getCookie(name : string) {
     const cookies = document.cookie.split('; ');
@@ -170,9 +172,21 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
   return (
        <div className="flex items-center">
         {selectedSong.id !== "" &&
-          <div>
-            <h1 className="text-5xl">{selectedSong.name}</h1>
-            <h2 className="pt-2">{`${selectedSong.author} - ${selectedSong.album}`}</h2>
+          <div className="w-full" >
+
+
+            
+
+            <div ref={sliderRef} className="flex -translate-x-36" >
+              <div className="w-24 bg-gradient-to-l from-transparent to-white z-10 translate-x-24"></div>
+              <div className="w-1/2 text-nowrap overflow-x-scroll "> 
+                <h1 className="text-5xl  translate-x-12" >{selectedSong.name}</h1>
+                <h2 className="pt-2  translate-x-12">{`${selectedSong.author} - ${selectedSong.album}`}</h2>
+              </div>
+              <div className="w-24 bg-gradient-to-r from-transparent to-white -translate-x-24"></div>
+            </div>
+
+
             <h2 className="pt-2 text-gray-500">38.8951, -77.0364</h2>
           </div>
         }
@@ -272,7 +286,7 @@ export default function App() {
           }
           }></Home>}  
       </div>
-      <div className={`absolute top-0 duration-500 transition  ${fadeIn ? "" : "opacity-0 -translate-y-[10%]"}`}>
+      <div className={`overflow-hidden absolute top-0 duration-500 transition  ${fadeIn ? "" : "opacity-0 -translate-y-[10%]"}`}>
         {fadeIn && <Map></Map> /**/} 
       </div>
       

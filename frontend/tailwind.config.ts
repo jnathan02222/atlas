@@ -15,6 +15,7 @@ export default {
       animation: {
         'slow-spin': 'spin 60s linear infinite', // Slow spin with a 10s duration
       },
+      
     },
   },
   plugins: [],
