@@ -122,10 +122,11 @@ function Home({signInHandler} : {signInHandler : ()=> void}){
   )
 }
 
+
+
 function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 112, height: 112}}></div>
   const selectedSong = useContext(PlayerContext).value
   const scriptsLoaded = useRef(false);
-  const sliderRef = useRef(null);
 
   function getCookie(name : string) {
     const cookies = document.cookie.split('; ');
@@ -168,25 +169,59 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
       };
   }, []);
 
+  const [position, setPosition] = useState(0)
+  const animationId = useRef<number>(0)
+  const sliderRef = useRef<HTMLHeadingElement>(null)
+
+  useEffect(()=>{
+    if(!sliderRef.current){
+      return
+    }
+    
+    setPosition(48)
+    const width = sliderRef.current.scrollWidth 
+    
+    console.log(width)
+    if(width <= 600){
+      return
+    }
+
+    const animate = (x : number, direction : number, pause : number) => {
+      setPosition(x)
+      if(pause > 0){
+        pause -= 1
+      }
+      if(x < (600-width) || x > 48){
+        direction *= -1
+        if(x < (600-width)){
+          x = (600-width)
+        }else{
+          x = 48
+        }
+        pause = 60
+      }
+
+      animationId.current = window.requestAnimationFrame(()=>{animate(x+(pause === 0 ? direction : 0), direction, pause)})
+    }
+    animationId.current = window.requestAnimationFrame(()=>{animate(48, -1, 60)})
+
+    return ()=>{cancelAnimationFrame(animationId.current)}
+  },[selectedSong])
 
   return (
        <div className="flex items-center">
         {selectedSong.id !== "" &&
-          <div className="w-full" >
-
-
+          <div className="w-full">
             
-
-            <div ref={sliderRef} className="flex -translate-x-36" >
+            <div className="flex -translate-x-36" >
               <div className="w-24 bg-gradient-to-l from-transparent to-white z-10 translate-x-24"></div>
-              <div className="w-1/2 text-nowrap overflow-x-scroll "> 
-                <h1 className="text-5xl  translate-x-12" >{selectedSong.name}</h1>
-                <h2 className="pt-2  translate-x-12">{`${selectedSong.author} - ${selectedSong.album}`}</h2>
+              <div className="w-[600px] text-nowrap overflow-x-hidden h-[64px]"> 
+                <h1 ref={sliderRef} className="text-5xl" style={{ transform: `translateX(${position}px)` }}>{selectedSong.name}</h1>
               </div>
               <div className="w-24 bg-gradient-to-r from-transparent to-white -translate-x-24"></div>
             </div>
 
-
+            <h2 className=" ">{`${selectedSong.author} - ${selectedSong.album}`}</h2>
             <h2 className="pt-2 text-gray-500">38.8951, -77.0364</h2>
           </div>
         }
