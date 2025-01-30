@@ -58,6 +58,26 @@ app.get('/api/search', (req, res) => {
   )
 })
 
+// /api/playlist-stop
+app.get('/api/playlist-tracks', (req, res) => {
+  axios({
+    method: 'get',
+    url : `https://api.spotify.com/v1/playlists/${req.query.id}/tracks`,
+    headers: {
+      'Authorization': 'Bearer ' + req.cookies['spotify_token'],
+    }
+  }).then(
+    (response) => {
+      res.json(response.data)
+    }
+  ).catch(
+    (error)=>{
+      //a problem for later
+    }
+  )
+
+})  
+
 // /api/contribute 
 app.put('/api/contribute', (req, res) => {
 
@@ -69,7 +89,23 @@ app.get('/api/neighbours', (req, res) => {
 })
 
 // /api/login-state
-
+app.get('/api/login-state', (req, res) => {
+  axios({
+    method: 'get',
+    url : `https://api.spotify.com/v1/me`,
+    headers: {
+      'Authorization': 'Bearer ' + req.cookies['spotify_token'],
+    }
+  }).then(
+    (response) => {
+      res.json({logged_in : true})
+    }
+  ).catch(
+    (error)=>{
+      res.json({logged_in : false})
+    }
+  )
+})
 
 // /api/play-track
 app.put('/api/play-track', (req, res) => {

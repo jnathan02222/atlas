@@ -1,35 +1,37 @@
 'use client'
-import { useEffect, useState, useRef, memo, createContext, useContext } from "react";
-import axios from "axios";
+import { useEffect, useState, useRef, memo, createContext, useContext } from "react"
+import axios from "axios"
+import { SyncLoader } from 'react-spinners'
 //https://coolors.co/cb3342-686963-8aa29e-3d5467-f1edee
 //https://coolors.co/8a4f7d-887880-88a096-bbab8b-ef8275
 
-const PlayerContext = createContext({value : {name : "", author : "", album : "", id : ""}, setValue : (val : {name : string, author :string, album : string, id : string})=>{}})
+const SongContext = createContext({value : {name : "", author : "", album : "", id : ""}, setValue : (val : {name : string, author :string, album : string, id : string})=>{}})
+const PlayerContext = createContext({value: false, setValue : (prev : boolean) => {}})
 
-
-const SearchBar = ({boxWidth, growDown, light, placeholder, type, onClick} : { boxWidth : number, growDown : boolean, light : boolean, placeholder : string, type : "playlist" | "track", onClick : (data : {name : string, author : string, album : string, id : string}) => void}) => {
-  const [query, setQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Array<{name : string, author : string, album : string, id : string}>>([]);
-  const latestTimestamp = useRef(0);
+const SearchBar = ({boxWidth, growDown, light, placeholder, type, onClick, onChange} : { boxWidth : number, growDown : boolean, light : boolean, placeholder : string, type : "playlist" | "track", onClick : (data : {name : string, author : string, album : string, id : string}) => void, onChange : () => void}) => {
+  const [query, setQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<Array<{name : string, author : string, album : string, id : string}>>([])
+  const latestTimestamp = useRef(0)
   
   //Use latest timestamp to ensure latest result is used
   function setCurrentSearchResults(results : Array<{name : string, author : string, album : string, id : string}>, timestamp : number){
     if(timestamp > latestTimestamp.current){
-      latestTimestamp.current = timestamp;
-      setSearchResults(results);
+      latestTimestamp.current = timestamp
+      setSearchResults(results)
     }
   }
   <input placeholder="Search by keyword or song..." ></input>
 
   
   async function searchQuery(e : React.FormEvent<HTMLInputElement>){
-    setQuery(e.currentTarget.value);
-    
-    const timestamp = Date.now();
+    setQuery(e.currentTarget.value)
+    onChange()
+
+    const timestamp = Date.now()
 
     if( e.currentTarget.value.trim() == ""){
-      setCurrentSearchResults([], timestamp);
-      return;
+      setCurrentSearchResults([], timestamp)
+      return
     }
     
     var result = await axios({
@@ -126,7 +128,7 @@ function Marquee({marqueeWidth, edgeWidth, endPause, selectedSong} : {marqueeWid
   const [position, setPosition] = useState(edgeWidth)
   const animationId = useRef<number>(0)
   const sliderRef = useRef<HTMLHeadingElement>(null)
-  const [showSide, setShowSide] = useState(true);
+  const [showSide, setShowSide] = useState(true)
 
   useEffect(()=>{
     if(!sliderRef.current){
@@ -168,30 +170,34 @@ function Marquee({marqueeWidth, edgeWidth, endPause, selectedSong} : {marqueeWid
 
   return (
     <div className={`flex`} style={{ transform: `translateX(${-edgeWidth*2}px)` }}>
-      <div style={{width: edgeWidth, transform: `translateX(${edgeWidth}px)`}} className={` ${showSide ? "bg-gradient-to-l from-transparent to-white" : ""} z-10 `}></div>
+      <div style={{width: edgeWidth, transform: `translateX(${edgeWidth}px)`}} className={` ${showSide ? "bg-gradient-to-l from-transparent via-white to-white" : ""} z-10 `}></div>
       <div className={`text-nowrap overflow-x-hidden h-[62px]`} style={{width: marqueeWidth}}> 
         <h1 ref={sliderRef} className="text-5xl w-min" style={{ transform: `translateX(${position}px)` }}>{selectedSong.name}</h1>
       </div>
-      <div style={{width: edgeWidth, transform: `translateX(${-edgeWidth}px)`}} className={`${showSide ? "bg-gradient-to-r from-transparent to-white" : ""}`}></div>
+      <div style={{width: edgeWidth, transform: `translateX(${-edgeWidth}px)`}} className={`${showSide ? "bg-gradient-to-r from-transparent via-white to-white" : ""}`}></div>
     </div>
   )
 }
 
 function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 112, height: 112}}></div>
-  const selectedSong = useContext(PlayerContext).value
-  const scriptsLoaded = useRef(false);
+  const selectedSong = useContext(SongContext).value
+  const scriptsLoaded = useRef(false)
   const [deviceId, setDeviceId] = useState("")
   const [coordinates, setCoordinates] = useState({x: 0, y: 0})
+  const setPlayer = useContext(PlayerContext).setValue
 
   const animationRef = useRef(0)
   const actualCoordinates = useRef({x: 0, y: 0})
+  
+ 
+  
 
   useEffect(()=>{
     actualCoordinates.current = {x: 180*Math.random()-90, y: 360*Math.random()-90}
     function roundToDecimalPlaces(num : number, decimals : number) {
-      let factor = Math.pow(10, decimals);
-      let rounded = Math.round(num * factor) / factor;
-      return parseFloat(rounded.toFixed(decimals));
+      let factor = Math.pow(10, decimals)
+      let rounded = Math.round(num * factor) / factor
+      return parseFloat(rounded.toFixed(decimals))
     }
 
     function updateCoordinates(){
@@ -210,7 +216,7 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
         newCoordinates.x = roundToDecimalPlaces(newCoordinates.x, 6)
         newCoordinates.y = roundToDecimalPlaces(newCoordinates.y, 6)
         return newCoordinates
-      });
+      })
 
 
       animationRef.current = window.requestAnimationFrame(updateCoordinates)
@@ -221,14 +227,14 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
   }, [selectedSong])
 
   function getCookie(name : string) {
-    const cookies = document.cookie.split('; ');
+    const cookies = document.cookie.split('; ')
     for (const cookie of cookies) {
-      const [key, value] = cookie.split('=');
+      const [key, value] = cookie.split('=')
       if (key === name) {
-        return decodeURIComponent(value);
+        return decodeURIComponent(value)
       }
     }
-    return null; // Return null if the cookie isn't found
+    return null // Return null if the cookie isn't found
   }
 
   useEffect(() => {
@@ -250,10 +256,10 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
       return
     }
 
-    const script = document.createElement("script");
-    script.src = "https://sdk.scdn.co/spotify-player.js";
-    script.async = true;
-    document.body.appendChild(script);
+    const script = document.createElement("script")
+    script.src = "https://sdk.scdn.co/spotify-player.js"
+    script.async = true
+    document.body.appendChild(script)
     scriptsLoaded.current = true
 
     window.onSpotifyWebPlaybackSDKReady = () => {
@@ -261,20 +267,23 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
             name: 'Atlas Webplayer',
             getOAuthToken: (cb : any) => { cb(getCookie("spotify_token")) },
             volume: 0.5
-        });
+        })
         
         player.addListener('ready', ({ device_id } : {device_id : string}) => {
-            console.log('Ready with Device ID', device_id);
+            console.log('Ready with Device ID', device_id)
+            player.setVolume(0.5)
             setDeviceId(device_id)
-        });
+        })
 
         player.addListener('not_ready', ({ device_id } : {device_id : string}) => {
-            console.log('Device ID has gone offline', device_id);
-        });
+            console.log('Device ID has gone offline', device_id)
+        })
 
-        player.connect();
-      };
-  }, []);
+        player.connect()
+
+        setPlayer(player)
+      }
+  }, [])
 
 
   return (
@@ -318,18 +327,20 @@ function Vinyls(){
 }
 
 function Search(){
-  const setSelectedSong = useContext(PlayerContext).setValue
+  const setSelectedSong = useContext(SongContext).setValue
 
   return (
     <>
-      <SearchBar boxWidth={400} type="track" growDown={false} light={false} placeholder="Search by track or keyword" onClick={(data)=>{setSelectedSong(data)}}></SearchBar>
+      <SearchBar onChange={()=>{}} boxWidth={400} type="track" growDown={false} light={false} placeholder="Search by track or keyword" onClick={(data)=>{setSelectedSong(data)}}></SearchBar>
     </>
   )
 }
 
 function Contribute(){
-  const [showSearch, setShowSearch] = useState(false);
-  const [fadeIn, setFadeIn] = useState(false);
+  const [showSearch, setShowSearch] = useState(false)
+  const [fadeIn, setFadeIn] = useState(false)
+  const [tracks, setTracks] = useState<Array<{name : string, author : string, album : string}>>([])
+  const [loading, setLoading] = useState(false)
   
   return (
     <>
@@ -338,12 +349,67 @@ function Contribute(){
           <div className="top-0 left-0 absolute w-screen h-screen bg-black flex justify-center items-start pt-48">
 
               <div className="z-10">
-                <SearchBar boxWidth={560} type="playlist" growDown={true} light={true} placeholder="Search for a playlist" onClick={(data)=>{}}></SearchBar>
+                <SearchBar onChange={()=>{setTracks([])}} boxWidth={560} type="playlist" growDown={true} light={true} placeholder="Search for a playlist" 
+                  onClick={
+                  async (data) => {
+                    setLoading(true)
+                    const response = await axios({
+                      method: 'get',
+                      url : `/api/playlist-tracks?id=${data.id}`
+                    })
+                    setLoading(false)
+                    setTracks(response.data.items.map(
+                      (item : Record<string, any>) => {
+                        return {name : item.track.name, author : item.track.artists.map((artist : Record<string, any>)=>artist.name).join(", "), album : item.track.album.name}
+                      }
+                    ))
+                  }
+                  }></SearchBar>
+                  {
+                    loading && <div className="w-full flex justify-center pt p-4">
+                      <SyncLoader color="#887880" loading={true} size={5}></SyncLoader>
+                    </div>
+                  }
+                  {
+                  tracks.length > 0 && 
+                  <>
+                    <div style={{width : 560}} className="overflow-y-auto h-96  bg-transparent mt-2 border-2 p-2 pt-0 rounded-md text-white border-[#887880]">
+                      { tracks.map(
+                        (track : {name : string, author : string, album : string}, i) => {
+                          return (<div className=" mt-2" key={i}>
+                            <h1 className="text-white text-nowrap truncate text-ellipsis">{track.name}</h1>
+                            <h2 className="text-gray-300 text-xs text-nowrap truncate text-ellipsis">{`${track.author} - ${track.album}`}</h2>
+                          </div>)
+                        }
+                      )}
+                    </div>
+                    <button className="mt-2 transition-color duration-300 border-2 p-2 rounded-md text-white border-[#887880] cursor-pointer hover:border-white">Submit</button>
+                    <style>
+                      {`
+                        /* width */
+                        ::-webkit-scrollbar {
+                          width: 10px;
+                        }
+
+                        /* Track */
+                        ::-webkit-scrollbar-track {
+                          display: none;
+                        }
+
+                        /* Handle */
+                        ::-webkit-scrollbar-thumb {
+                          background: white;
+                          border-radius: 5px;
+                        }
+                      `}
+                    </style>
+                  </>
+                  }
               </div>
               <div onClick={()=>{
               setFadeIn(false)
               setTimeout(()=>setShowSearch(false), 300)
-
+              setTracks([])
               }} className="top-0 left-0 w-full h-full absolute"></div>
           </div>
         }
@@ -359,9 +425,9 @@ function Contribute(){
 
 function Map({handleLogout} : {handleLogout : ()=>void}){
   const [selectedSong, setSelectedSong] = useState<{name : string, author : string, album : string, id : string}>({name : "", author : "", album : "", id : ""})    
-
+  
   return (
-    <PlayerContext.Provider value={{value : selectedSong, setValue : setSelectedSong}}>
+    <SongContext.Provider value={{value : selectedSong, setValue : setSelectedSong}}>
       <div className="w-screen h-screen flex flex-col justify-between p-16">
         <div className="flex justify-between items-start">
           <Player ></Player>
@@ -380,40 +446,56 @@ function Map({handleLogout} : {handleLogout : ()=>void}){
           </div>
         </div>
       </div>
-    </PlayerContext.Provider>
+    </SongContext.Provider>
   )
 }
 
 export default function App() {
-  const [showMap, setShowMap] = useState<boolean>(false)
-  const [showHome, setShowHome] = useState<boolean>(true)
-
+  const [showMap, setShowMap] = useState(false)
+  const [showHome, setShowHome] = useState(true)
   const [fadeIn, setFadeIn] = useState(false)
-  
-  useEffect(()=>{
-    
-  }, [])
+  const [player, setPlayer] = useState<any>() //Not sure what type this is
+  const [loggedIn, setLoggedIn] = useState(false)
 
+  useEffect(()=>{
+    axios({
+      method: 'get',
+      url: '/api/login-state'
+    }).then(
+      response => {
+        if(response.data.logged_in){
+          signIn()
+          setLoggedIn(true)
+        }
+      }
+    )
+  }, [])
+  
+  function signIn(){
+    setFadeIn(true)
+    setShowMap(true)
+    setTimeout(()=>{setShowHome(false)}, 500)
+  }
   return (
-    <div className="overflow-hidden">
-      <div className={`duration-500 transition  ${fadeIn ? "-translate-y-[10%] opacity-0" : ""}`}>
-        {showHome && <Home signInHandler={
-          ()=>{
-            setFadeIn(true)
-            setShowMap(true)
-            setTimeout(()=>{setShowHome(false)}, 500)
-          }
-          }></Home>}  
+    <PlayerContext.Provider value={{value: player, setValue: setPlayer}}>
+      <div className="overflow-hidden">
+        <div className={`duration-500 transition  ${fadeIn ? "-translate-y-[10%] opacity-0" : ""}`}>
+          {showHome && <Home signInHandler={signIn
+            }></Home>}  
+        </div>
+        <div className={`overflow-hidden absolute top-0 duration-500 transition  ${fadeIn ? "" : "opacity-0 -translate-y-[10%]"}`}>
+          {showMap && <Map handleLogout={()=>{
+            setFadeIn(false)
+            setShowHome(true)
+            //setTimeout(()=>{setShowMap(false)}, 500)
+            setShowMap(false) //Instantly, otherwise looks dumb
+            player.disconnect()
+
+            document.cookie = `spotify_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`
+
+            }}></Map> /**/} 
+        </div>
       </div>
-      <div className={`overflow-hidden absolute top-0 duration-500 transition  ${fadeIn ? "" : "opacity-0 -translate-y-[10%]"}`}>
-        {showMap && <Map handleLogout={()=>{
-          setFadeIn(false)
-          setShowHome(true)
-          //setTimeout(()=>{setShowMap(false)}, 500)
-          setShowMap(false) //Instantly, otherwise looks dumb
-          }}></Map> /**/} 
-      </div>
-      
-    </div>
-  );
+    </PlayerContext.Provider>
+  )
 }
