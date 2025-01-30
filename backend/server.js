@@ -2,6 +2,7 @@ const express = require('express')
 const cookieParser = require("cookie-parser");
 const app = express()
 app.use(cookieParser());
+app.use(express.json());
 
 const axios = require('axios')
 const pgp = require('pg-promise')()
@@ -55,12 +56,43 @@ app.get('/api/search', (req, res) => {
       //Bruh
     }
   )
-
 })
 
 // /api/contribute 
+app.put('/api/contribute', (req, res) => {
+
+})
+
 // /api/neighbours
+app.get('/api/neighbours', (req, res) => {
+
+})
+
+// /api/login-state
+
+
 // /api/play-track
+app.put('/api/play-track', (req, res) => {
+  
+  axios({
+    method: 'put',
+    url: `https://api.spotify.com/v1/me/player/play?device_id=${req.body.device}`,
+    headers: {
+      'Authorization': 'Bearer ' + req.cookies['spotify_token'],
+    },
+    data: {
+      uris: ["spotify:track:"+req.body.track]
+    }
+  }).then(
+    response => {
+      res.send("Playback started")
+    }
+  ).catch(
+    error => {
+      //Bruh
+    }
+  )
+})
 
 app.get('/api/callback', (req, res) => {
   var code = req.query.code || null;

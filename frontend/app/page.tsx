@@ -122,8 +122,8 @@ function Home({signInHandler} : {signInHandler : ()=> void}){
   )
 }
 
-function Marquee({marqueeWidth, start, endPause, selectedSong} : {marqueeWidth : number, start : number, endPause : number, selectedSong : {name : string, author : string, album : string, id : string}}){
-  const [position, setPosition] = useState(0)
+function Marquee({marqueeWidth, edgeWidth, endPause, selectedSong} : {marqueeWidth : number, edgeWidth : number, endPause : number, selectedSong : {name : string, author : string, album : string, id : string}}){
+  const [position, setPosition] = useState(edgeWidth)
   const animationId = useRef<number>(0)
   const sliderRef = useRef<HTMLHeadingElement>(null)
   const [showSide, setShowSide] = useState(true);
@@ -133,10 +133,10 @@ function Marquee({marqueeWidth, start, endPause, selectedSong} : {marqueeWidth :
       return
     }
     
-    setPosition(start)
+    setPosition(edgeWidth)
     const width = sliderRef.current.scrollWidth 
     
-    if(width <= marqueeWidth){
+    if(width <= marqueeWidth-edgeWidth){
       setShowSide(false)
       return
     }
@@ -148,32 +148,31 @@ function Marquee({marqueeWidth, start, endPause, selectedSong} : {marqueeWidth :
       if(pause > 0){
         pause -= 1
       }
-      if(x < (marqueeWidth-width) || x > start){
+      const leftEdge = marqueeWidth-width-edgeWidth
+      if(x < (leftEdge) || x > edgeWidth){
         direction *= -1
-        if(x < (marqueeWidth-width)){
-          x = (marqueeWidth-width)
+        if(x < leftEdge){
+          x = leftEdge
         }else{
-          x = start
+          x = edgeWidth
         }
         pause = endPause
       }
 
       animationId.current = window.requestAnimationFrame(()=>{animate(x+(pause === 0 ? direction : 0), direction, pause)})
     }
-    animationId.current = window.requestAnimationFrame(()=>{animate(start, -1, endPause)})
+    animationId.current = window.requestAnimationFrame(()=>{animate(edgeWidth, -1, endPause)})
 
     return ()=>{cancelAnimationFrame(animationId.current)}
   },[selectedSong])
 
   return (
-    <div className="flex -translate-x-36" >
-      <div className={`w-24 ${showSide ? "bg-gradient-to-l from-transparent to-white" : ""} z-10 translate-x-24`}></div>
-      <div className="w-[600px] text-nowrap overflow-x-hidden"> 
-        <h1 ref={sliderRef} className="text-5xl" style={{ transform: `translateX(${position}px)` }}>{selectedSong.name}</h1>
-        <h2 className="pt-2" style={{ transform: `translateX(${position}px)` }}>{`${selectedSong.author} - ${selectedSong.album}`}</h2>
-
+    <div className={`flex`} style={{ transform: `translateX(${-edgeWidth*2}px)` }}>
+      <div style={{width: edgeWidth, transform: `translateX(${edgeWidth}px)`}} className={` ${showSide ? "bg-gradient-to-l from-transparent to-white" : ""} z-10 `}></div>
+      <div className={`text-nowrap overflow-x-hidden h-[62px]`} style={{width: marqueeWidth}}> 
+        <h1 ref={sliderRef} className="text-5xl w-min" style={{ transform: `translateX(${position}px)` }}>{selectedSong.name}</h1>
       </div>
-      <div className={`w-24 ${showSide ? "bg-gradient-to-r from-transparent to-white" : ""} z-10 -translate-x-24`}></div>
+      <div style={{width: edgeWidth, transform: `translateX(${-edgeWidth}px)`}} className={`${showSide ? "bg-gradient-to-r from-transparent to-white" : ""}`}></div>
     </div>
   )
 }
@@ -181,6 +180,45 @@ function Marquee({marqueeWidth, start, endPause, selectedSong} : {marqueeWidth :
 function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 112, height: 112}}></div>
   const selectedSong = useContext(PlayerContext).value
   const scriptsLoaded = useRef(false);
+  const [deviceId, setDeviceId] = useState("")
+  const [coordinates, setCoordinates] = useState({x: 0, y: 0})
+
+  const animationRef = useRef(0)
+  const actualCoordinates = useRef({x: 0, y: 0})
+
+  useEffect(()=>{
+    actualCoordinates.current = {x: 180*Math.random()-90, y: 360*Math.random()-90}
+    function roundToDecimalPlaces(num : number, decimals : number) {
+      let factor = Math.pow(10, decimals);
+      let rounded = Math.round(num * factor) / factor;
+      return parseFloat(rounded.toFixed(decimals));
+    }
+
+    function updateCoordinates(){
+      setCoordinates(prev => {
+        const newCoordinates = {x:0, y:0}
+        if(Math.abs(actualCoordinates.current.x - prev.x) < 0.1){
+          newCoordinates.x = actualCoordinates.current.x
+        }else{
+          newCoordinates.x = prev.x + (actualCoordinates.current.x - prev.x)/10
+        }
+        if(Math.abs(actualCoordinates.current.y - prev.y) < 0.1){
+          newCoordinates.y = actualCoordinates.current.y
+        }else{
+          newCoordinates.y = prev.y + (actualCoordinates.current.y - prev.y)/10
+        }
+        newCoordinates.x = roundToDecimalPlaces(newCoordinates.x, 6)
+        newCoordinates.y = roundToDecimalPlaces(newCoordinates.y, 6)
+        return newCoordinates
+      });
+
+
+      animationRef.current = window.requestAnimationFrame(updateCoordinates)
+    }
+    animationRef.current = window.requestAnimationFrame(updateCoordinates)
+
+    return ()=>{cancelAnimationFrame(animationRef.current)}
+  }, [selectedSong])
 
   function getCookie(name : string) {
     const cookies = document.cookie.split('; ');
@@ -192,6 +230,20 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
     }
     return null; // Return null if the cookie isn't found
   }
+
+  useEffect(() => {
+    
+    if(selectedSong.id !== "" && deviceId !== ""){
+      axios({
+        method: 'put',
+        url: `/api/play-track`,
+        data: {
+          track: selectedSong.id,
+          device: deviceId
+        }
+      })
+    }
+  }, [selectedSong, deviceId])
 
   useEffect(() => {
     if(scriptsLoaded.current){
@@ -206,13 +258,14 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
 
     window.onSpotifyWebPlaybackSDKReady = () => {
         const player = new window.Spotify.Player({
-            name: 'Web Playback SDK',
+            name: 'Atlas Webplayer',
             getOAuthToken: (cb : any) => { cb(getCookie("spotify_token")) },
             volume: 0.5
         });
         
         player.addListener('ready', ({ device_id } : {device_id : string}) => {
             console.log('Ready with Device ID', device_id);
+            setDeviceId(device_id)
         });
 
         player.addListener('not_ready', ({ device_id } : {device_id : string}) => {
@@ -227,15 +280,29 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
   return (
        <div className="flex items-center">
         {selectedSong.id !== "" &&
-          <div className="w-full">
+        <div className="w-full">
             
-            <Marquee marqueeWidth={600} start={48} endPause={60} selectedSong={selectedSong}></Marquee>
-
-            <h2 className="pt-2 text-gray-500">38.8951, -77.0364</h2>
+            <Marquee marqueeWidth={600} edgeWidth={48} endPause={60} selectedSong={selectedSong}></Marquee>
+            <h2 className="text-ellipsis truncate text-nowrap" style={{width: 500}}>{`${selectedSong.author} - ${selectedSong.album}`}</h2>
+            <h2 className="pt-2 text-gray-500">{`${coordinates.x}, ${coordinates.y}`}</h2>
           </div>
         }
       </div>
    
+  )
+}
+
+function Vinyl(){
+  return (
+    <div className="flex items-center justify-center w-[25%]">
+      <div className="flex justify-center items-center animate-slow-spin aspect-square w-4/5">
+        <img src="Emblem_of_the_United_Nations.svg" draggable="false" className="w-full drop-shadow-[20px_20px_35px_rgba(0,0,0,0.1)]"></img>
+      </div>
+      <div className="rounded-full bg-[#88a096] border-4	border-[#88a096] w-[8%] aspect-square absolute"></div>
+      <img src="noun-wood-texture-586023.svg" draggable="false" className="w-[8%]  animate-slow-spin  opacity-[0.05] absolute"></img>
+      <div className="rounded-full bg-white border-4	border-[#88a096] w-[2%] aspect-square absolute"></div>
+    
+    </div>
   )
 }
 function Vinyls(){
@@ -290,13 +357,17 @@ function Contribute(){
   )
 }
 
-function Map(){
+function Map({handleLogout} : {handleLogout : ()=>void}){
   const [selectedSong, setSelectedSong] = useState<{name : string, author : string, album : string, id : string}>({name : "", author : "", album : "", id : ""})    
 
   return (
     <PlayerContext.Provider value={{value : selectedSong, setValue : setSelectedSong}}>
       <div className="w-screen h-screen flex flex-col justify-between p-16">
-        <Player ></Player>
+        <div className="flex justify-between items-start">
+          <Player ></Player>
+          <button onClick={handleLogout} className="transition-color duration-300 border-2 p-2 h-12 rounded-md text-gray-700 cursor-pointer hover:border-[#887880]">Log Out</button>
+
+        </div>
         <Vinyls></Vinyls>
         <div className="flex justify-between items-end">
           <div className="flex gap-1 items-end">
@@ -315,23 +386,32 @@ function Map(){
 
 export default function App() {
   const [showMap, setShowMap] = useState<boolean>(false)
+  const [showHome, setShowHome] = useState<boolean>(true)
+
   const [fadeIn, setFadeIn] = useState(false)
   
   useEffect(()=>{
+    
   }, [])
 
   return (
     <div className="overflow-hidden">
-      <div className={`duration-500 transition  ${fadeIn ? "translate-y-[10%] opacity-0" : ""}`}>
-        {!showMap && <Home signInHandler={
+      <div className={`duration-500 transition  ${fadeIn ? "-translate-y-[10%] opacity-0" : ""}`}>
+        {showHome && <Home signInHandler={
           ()=>{
             setFadeIn(true)
-            setTimeout(()=>{setShowMap(true)}, 500)
+            setShowMap(true)
+            setTimeout(()=>{setShowHome(false)}, 500)
           }
           }></Home>}  
       </div>
       <div className={`overflow-hidden absolute top-0 duration-500 transition  ${fadeIn ? "" : "opacity-0 -translate-y-[10%]"}`}>
-        {fadeIn && <Map></Map> /**/} 
+        {showMap && <Map handleLogout={()=>{
+          setFadeIn(false)
+          setShowHome(true)
+          //setTimeout(()=>{setShowMap(false)}, 500)
+          setShowMap(false) //Instantly, otherwise looks dumb
+          }}></Map> /**/} 
       </div>
       
     </div>
