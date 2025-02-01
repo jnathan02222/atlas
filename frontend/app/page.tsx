@@ -188,9 +188,6 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
 
   const animationRef = useRef(0)
   const actualCoordinates = useRef({x: 0, y: 0})
-  
- 
-  
 
   useEffect(()=>{
     actualCoordinates.current = {x: 180*Math.random()-90, y: 360*Math.random()-90}
@@ -225,7 +222,7 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
 
     return ()=>{cancelAnimationFrame(animationRef.current)}
   }, [selectedSong])
-
+  
   function getCookie(name : string) {
     const cookies = document.cookie.split('; ')
     for (const cookie of cookies) {
@@ -239,16 +236,19 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
 
   useEffect(() => {
     
-    if(selectedSong.id !== "" && deviceId !== ""){
-      axios({
-        method: 'put',
-        url: `/api/play-track`,
-        data: {
-          track: selectedSong.id,
-          device: deviceId
-        }
-      })
+    if(selectedSong.id !== ""){
+      if(deviceId !== ""){
+        axios({
+          method: 'put',
+          url: `/api/play-track`,
+          data: {
+            track: selectedSong.id,
+            device: deviceId
+          }
+        })
+      }
     }
+    
   }, [selectedSong, deviceId])
 
   useEffect(() => {
@@ -315,7 +315,27 @@ function Vinyl(){
   )
 }
 function Vinyls(){
+  const selectedSong = useContext(SongContext).value
+  const [songs, setSongs] = useState<Array<{songA: string, songB: string, count: number}>>([])
   
+  useEffect(()=>{
+    if(selectedSong.id !== ""){
+      axios({
+        method: 'get',
+        url: '/api/neighbours',
+        params: {
+          track_id: selectedSong.id
+        }
+      }).then(
+        (response : Record<string, any>) => {
+          setSongs(prev => {
+            return [...prev, response.data.neighbours]
+          })
+        }
+      )
+    }
+    
+  }, [selectedSong])
   return (
     <div className="flex justify-center items-center absolute top-0 left-0 w-screen h-screen -z-10">
       {false && <div>
@@ -339,9 +359,25 @@ function Search(){
 function Contribute(){
   const [showSearch, setShowSearch] = useState(false)
   const [fadeIn, setFadeIn] = useState(false)
-  const [tracks, setTracks] = useState<Array<{name : string, author : string, album : string}>>([])
+
+  const [tracks, setTracks] = useState<Array<{name : string, author : string, album : string, id : string}>>([])
+  const [playlistId, setPlaylistId] = useState("")
   const [loading, setLoading] = useState(false)
-  
+  const [disable, setDisable] = useState(false)
+
+  async function contributeTracks(){
+    setDisable(true)
+    await axios({
+      method: 'put',
+      url: `/api/contribute`,
+      data: {
+        tracks: tracks.map(track => track.id),
+        playlist: playlistId
+      }
+    })
+    setDisable(false)
+  }
+
   return (
     <>
       <div className={`duration-300 transition  ${fadeIn ? "opacity-80" : "opacity-0"}`}>
@@ -360,9 +396,10 @@ function Contribute(){
                     setLoading(false)
                     setTracks(response.data.items.map(
                       (item : Record<string, any>) => {
-                        return {name : item.track.name, author : item.track.artists.map((artist : Record<string, any>)=>artist.name).join(", "), album : item.track.album.name}
+                        return {name : item.track.name, author : item.track.artists.map((artist : Record<string, any>)=>artist.name).join(", "), album : item.track.album.name, id: item.track.id}
                       }
                     ))
+                    setPlaylistId(data.id)
                   }
                   }></SearchBar>
                   {
@@ -373,7 +410,7 @@ function Contribute(){
                   {
                   tracks.length > 0 && 
                   <>
-                    <div style={{width : 560}} className="overflow-y-auto h-96  bg-transparent mt-2 border-2 p-2 pt-0 rounded-md text-white border-[#887880]">
+                    <div style={{width : 560}} className="overflow-y-auto h-48  bg-transparent mt-2 border-2 p-2 pt-0 rounded-md text-white border-[#887880]">
                       { tracks.map(
                         (track : {name : string, author : string, album : string}, i) => {
                           return (<div className=" mt-2" key={i}>
@@ -383,7 +420,7 @@ function Contribute(){
                         }
                       )}
                     </div>
-                    <button className="mt-2 transition-color duration-300 border-2 p-2 rounded-md text-white border-[#887880] cursor-pointer hover:border-white">Submit</button>
+                    <button onClick={contributeTracks} className="mt-2 transition-color duration-300 border-2 p-2 rounded-md text-white border-[#887880] cursor-pointer hover:border-white">Submit</button>
                     <style>
                       {`
                         /* width */

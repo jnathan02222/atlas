@@ -7,7 +7,7 @@ Contribute
 -Search bar shows playlists DONE
 -Show playlist songs when contributing DONE
 -When one is submitted, lock frontend  <---
--Tell backend to write into db  <---
+-Tell backend to write into db DONE (COULD BE OPTIMIZED)
 -Logout should stop music DONE
 
 Search 
@@ -16,7 +16,7 @@ Search
     -Auto sign in if cookie works, store whether in guest mode somewhere <or maybe just check with backend>? DONE
     -Log out? DONE
 -On click (or enter for keyword), send text or track id to backend <---
--Backend returns neighbours <---
+-Backend returns neighbours DONE
 
 Player
 -When a vinyl is clicked start playing music and update text / location  <---
@@ -27,12 +27,10 @@ Player
 -Interactions when something else is playing?
 
 
-
 Display
 -Favicon
--Given a center track and it's neighbours, render
--Center on new track, add neighbours to it 
--cache and don't remove others (but maybe stop rendering)
+-Given a list of tracks, their relations, attempt to render 
+-On click, add those neighbours too
 -Hover to show information
 -Big label to say the region
 
@@ -52,5 +50,6 @@ Embeddings
     -Get top songs, take best summaries (see below) and apply k-cluster for biggest set
 -Script to go through all unique playlists and get embedding, store in vector database (only has to run if it's not in the DB)
 -Script to take a song, get all the playlists it's in and get the best descriptor of it using k cluster, then store it
--Advanced feature: regional summary of many songs together
-
+    -Either of these last two may be done in the contribute and neighbours endpoints instead
+-Advanced feature: regional summary of many songs together (zoom out)
+-Word neighbours mode vs. corrlelation neighbours

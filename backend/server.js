@@ -33,9 +33,18 @@ function generateRandomString(n) {
   return result;
 }
 
+function getCombinations(list) {
+  const result = []
+  for(var i = 0; i < list.length; i++){
+    for(var j = i+1; j < list.length; j++){
+      result.push([list[i], list[j]].sort())
+    }
+  }
+  return result
+}
+
 // /api/search/playlist
 app.get('/api/search', (req, res) => {
-  
   axios({
     method: 'get',
     url : 'https://api.spotify.com/v1/search/',
@@ -80,12 +89,51 @@ app.get('/api/playlist-tracks', (req, res) => {
 
 // /api/contribute 
 app.put('/api/contribute', (req, res) => {
+  console.log(req.body.tracks)
+  console.log(req.body.playlist)
+  
+  /*
+  //Get vector embedding if necessary
 
+  Promise.all(
+    getCombinations(req.body.tracks).map(
+      async combo => {
+        //POTENTIAL FOR SPEEDUP / LESS STORAGE
+        //BEWARE OF CONCURRENCY ISSUES
+        try{
+          //Check if the playlist is being tracked. Fails if the correlation already exists for this playlist
+          await db.none(`INSERT INTO names VALUES('${combo[0]}','${combo[1]}','${req.body.playlist}')`)
+          //Upsert correlation count
+          await db.none(`
+            INSERT INTO correlations VALUES('${combo[0]}','${combo[1]}',1)
+            ON CONFLICT (songA, songB) DO
+            UPDATE SET count = correlations.count + 1
+            `)
+        }catch(error){
+          //oublie moi
+          //error promise somehow
+        }
+      }
+    )
+  ).then(response => {
+    res.json({success : true})
+  }).catch(error => {
+    res.json({success : false})
+  })
+    */
 })
 
 // /api/neighbours
 app.get('/api/neighbours', (req, res) => {
-
+  const track_id = req.query.track_id
+  db.any(`SELECT * FROM correlations WHERE songA = ${track_id} OR songB = ${track_id}`).then(
+    (data)=>{
+      //Select all playlists that contain the song 
+      //Get vectors for each playlist
+      //K cluster
+      res.json({neighbours : data})
+    }
+  )
 })
 
 // /api/login-state
@@ -109,7 +157,6 @@ app.get('/api/login-state', (req, res) => {
 
 // /api/play-track
 app.put('/api/play-track', (req, res) => {
-  
   axios({
     method: 'put',
     url: `https://api.spotify.com/v1/me/player/play?device_id=${req.body.device}`,
