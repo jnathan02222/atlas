@@ -2,11 +2,20 @@ Good things to put on resume
 //Determine next search term (word2Vec) after all promises resolve
 //Make call to database to update word list and tick up counter for songs 
 
+OVERALL SUMMARY 
+-Display 
+-Guest search DONE
+
+-Embeddings + vector database (AWS hosting)
+    -Store in vector db 
+    -K clustering
+-Error handling 
+
 Contribute
 -Show search bar when button is clicked DONE
 -Search bar shows playlists DONE
 -Show playlist songs when contributing DONE
--When one is submitted, lock frontend  <---
+-When one is submitted, lock frontend  DONE
 -Tell backend to write into db DONE (COULD BE OPTIMIZED)
 -Logout should stop music DONE
 
@@ -19,20 +28,20 @@ Search
 -Backend returns neighbours DONE
 
 Player
--When a vinyl is clicked start playing music and update text / location  <---
-    -Do it on successful search? DONE
+-Do it on successful search? DONE
 -Randomized coordinates for now? DONE
 -Long titles move side to side DONE
 -Read for error handling: https://developer.spotify.com/documentation/web-playback-sdk
--Interactions when something else is playing?
+-Interactions when something else is playing? DONE
 
 
-Display
+Display <---
 -Favicon
 -Given a list of tracks, their relations, attempt to render 
 -On click, add those neighbours too
 -Hover to show information
 -Big label to say the region
+-When a vinyl is clicked start playing music and update text / location  
 
 Extra
 -Explainer (?) button 
@@ -53,3 +62,8 @@ Embeddings
     -Either of these last two may be done in the contribute and neighbours endpoints instead
 -Advanced feature: regional summary of many songs together (zoom out)
 -Word neighbours mode vs. corrlelation neighbours
+
+greek
+spotify
+serif
+website

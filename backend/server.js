@@ -3,6 +3,10 @@ const cookieParser = require("cookie-parser");
 const app = express()
 app.use(cookieParser());
 app.use(express.json());
+require('dotenv').config();
+
+const { Mutex } = require('async-mutex');
+const mutex = new Mutex();
 
 const axios = require('axios')
 const pgp = require('pg-promise')()
@@ -11,18 +15,73 @@ const db = pgp({
   port: 5432,               
   database: 'music_db',         
   user: 'postgres',           
-  password: 'admin',   
+  password: process.env.DB_PASSWORD,   
 })
-require('dotenv').config();
 
+const OpenAI = require('openai')
+const openai = new OpenAI()
 
 var redirect_uri = "http://localhost:8888/api/callback" //Also change
 var client_id = '0626b416c6164a5599c9c2c4af16d0b7'
 var client_secret = process.env.SPOTIFY_CLIENT_SECRET 
+var spotify_token = ""
 
 /**
  * API Backend
  */
+
+//Gets a fresh token then calls a callback function
+async function refreshToken(){
+  const response = await axios({
+    method: 'post',
+    url: 'https://accounts.spotify.com/api/token',
+    headers: {
+      'Authorization': 'Basic ' + Buffer.from(client_id + ':' + client_secret).toString('base64'),
+    },
+    data: new URLSearchParams({
+      grant_type: 'client_credentials',
+    }).toString(),
+  })
+  const release = await mutex.acquire();
+  spotify_token = response.data.access_token
+  release();
+}
+refreshToken() //RUN TO GET TOKEN
+
+async function readGlobalSpotifyToken() {
+  const release = await mutex.acquire(); // Lock
+  try {
+    return spotify_token;
+  } finally {
+    release(); // Unlock (preserves return value)
+  }
+}
+
+async function spotifySearch(token, req){
+  return axios({
+    method: 'get',
+    url : 'https://api.spotify.com/v1/search/',
+    headers: {
+      'Authorization': 'Bearer ' + token,
+    },
+    params: {
+      q: req.query.q,
+      type: req.query.type,
+      limit: 8
+    }
+  })
+}
+
+async function getSpotifyPlaylist(token, req){
+  return axios({
+    method: 'get',
+    url : `https://api.spotify.com/v1/playlists/${req.query.id}/tracks`,
+    headers: {
+      'Authorization': 'Bearer ' + token,
+    }
+  })
+}
+
 
 function generateRandomString(n) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -44,65 +103,72 @@ function getCombinations(list) {
 }
 
 // /api/search/playlist
-app.get('/api/search', (req, res) => {
-  axios({
-    method: 'get',
-    url : 'https://api.spotify.com/v1/search/',
-    headers: {
-      'Authorization': 'Bearer ' + req.cookies['spotify_token'],
-    },
-    params: {
-      q: req.query.q,
-      type: req.query.type,
-      limit: 8
+app.get('/api/search', async (req, res) => {
+  try {
+    const response = await spotifySearch(req.cookies['spotify_token'], req) 
+    res.json(response.data)
+  }catch (error) {
+    if(error.status === 401){
+      for(var i = 0; i < 3; i++){ //Attempt 3 times
+        try {
+          //Use general token
+          const response = await spotifySearch(await readGlobalSpotifyToken(), req)
+          res.json(response.data)
+          break
+        } catch (error) {
+          if(error.status !== 401){
+            break
+          }
+          await refreshToken()
+        }
+      }
     }
-  }).then(
-    response => {
-      res.json(response.data)
-    }
-  ).catch(
-    error => {
-      //Bruh
-    }
-  )
+  }
 })
 
 // /api/playlist-stop
-app.get('/api/playlist-tracks', (req, res) => {
-  axios({
-    method: 'get',
-    url : `https://api.spotify.com/v1/playlists/${req.query.id}/tracks`,
-    headers: {
-      'Authorization': 'Bearer ' + req.cookies['spotify_token'],
+app.get('/api/playlist-tracks', async (req, res) => {
+  try{
+    const response = await getSpotifyPlaylist(req.cookies['spotify_token'], req)
+    res.json(response.data)
+  }catch(error){
+    for(var i = 0; i < 3; i++){ //Attempt 3 times
+      try {
+        //Use general token
+        const response = await getSpotifyPlaylist(await readGlobalSpotifyToken(), req)
+        res.json(response.data)
+        break
+      } catch (error) {
+        if(error.status !== 401){
+          break
+        }
+        await refreshToken()
+      }
     }
-  }).then(
-    (response) => {
-      res.json(response.data)
-    }
-  ).catch(
-    (error)=>{
-      //a problem for later
-    }
-  )
-
+  }
 })  
 
 // /api/contribute 
-app.put('/api/contribute', (req, res) => {
-  console.log(req.body.tracks)
-  console.log(req.body.playlist)
-  
-  /*
-  //Get vector embedding if necessary
+app.put('/api/contribute', async (req, res) => {
 
-  Promise.all(
+  //Get vector embedding if necessary
+  const response = await openai.embeddings.create({
+    model: "text-embedding-3-small",
+    input: `Playlist title: ${req.body.playlist.name}`,
+    encoding_format: "float",
+    dimensions: 512
+  })
+  //console.log(response.data)
+  //Error handling
+
+  await Promise.all(
     getCombinations(req.body.tracks).map(
       async combo => {
         //POTENTIAL FOR SPEEDUP / LESS STORAGE
         //BEWARE OF CONCURRENCY ISSUES
         try{
           //Check if the playlist is being tracked. Fails if the correlation already exists for this playlist
-          await db.none(`INSERT INTO names VALUES('${combo[0]}','${combo[1]}','${req.body.playlist}')`)
+          await db.none(`INSERT INTO names VALUES('${combo[0]}','${combo[1]}','${req.body.playlist.id}')`)
           //Upsert correlation count
           await db.none(`
             INSERT INTO correlations VALUES('${combo[0]}','${combo[1]}',1)
@@ -115,23 +181,23 @@ app.put('/api/contribute', (req, res) => {
         }
       }
     )
-  ).then(response => {
-    res.json({success : true})
-  }).catch(error => {
-    res.json({success : false})
-  })
-    */
+  )
+  res.json({success : true})
 })
 
 // /api/neighbours
 app.get('/api/neighbours', (req, res) => {
   const track_id = req.query.track_id
-  db.any(`SELECT * FROM correlations WHERE songA = ${track_id} OR songB = ${track_id}`).then(
+  db.any(`SELECT * FROM correlations WHERE songA = '${track_id}' OR songB = '${track_id}'`).then(
     (data)=>{
       //Select all playlists that contain the song 
       //Get vectors for each playlist
       //K cluster
       res.json({neighbours : data})
+    }
+  ).catch(
+    error => {
+      
     }
   )
 })
@@ -172,7 +238,8 @@ app.put('/api/play-track', (req, res) => {
     }
   ).catch(
     error => {
-      //Bruh
+      console.log(error)
+      //bruh
     }
   )
 })

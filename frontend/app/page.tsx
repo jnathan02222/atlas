@@ -5,16 +5,18 @@ import { SyncLoader } from 'react-spinners'
 //https://coolors.co/cb3342-686963-8aa29e-3d5467-f1edee
 //https://coolors.co/8a4f7d-887880-88a096-bbab8b-ef8275
 
-const SongContext = createContext({value : {name : "", author : "", album : "", id : ""}, setValue : (val : {name : string, author :string, album : string, id : string})=>{}})
+const SongContext = createContext({value : {name : "", author : "", album : "", id : ""}, setValue : (val : Song | ((song: Song) => Song))=>{}})
 const PlayerContext = createContext({value: false, setValue : (prev : boolean) => {}})
 
-const SearchBar = ({boxWidth, growDown, light, placeholder, type, onClick, onChange} : { boxWidth : number, growDown : boolean, light : boolean, placeholder : string, type : "playlist" | "track", onClick : (data : {name : string, author : string, album : string, id : string}) => void, onChange : () => void}) => {
-  const [query, setQuery] = useState("")
-  const [searchResults, setSearchResults] = useState<Array<{name : string, author : string, album : string, id : string}>>([])
+type Song = {name : string, author : string, album : string, id : string}
+
+const SearchBar = ({boxWidth, growDown, light, placeholder, type, onClick, onChange, defaultSearch, disable} : { boxWidth : number, growDown : boolean, light : boolean, placeholder : string, type : "playlist" | "track", onClick : (data : Song) => void, onChange : () => void, defaultSearch : string, disable : boolean}) => {
+  const [query, setQuery] = useState(defaultSearch)
+  const [searchResults, setSearchResults] = useState<Array<Song>>([])
   const latestTimestamp = useRef(0)
   
   //Use latest timestamp to ensure latest result is used
-  function setCurrentSearchResults(results : Array<{name : string, author : string, album : string, id : string}>, timestamp : number){
+  function setCurrentSearchResults(results : Array<Song>, timestamp : number){
     if(timestamp > latestTimestamp.current){
       latestTimestamp.current = timestamp
       setSearchResults(results)
@@ -69,12 +71,12 @@ const SearchBar = ({boxWidth, growDown, light, placeholder, type, onClick, onCha
       <div className={` border-2 rounded-md  ${light ? "border-[#887880]" : "bg-white"} ${growDown ? "border-t-0 rounded-t-none" : "border-b-0 rounded-b-none pt-0"}`} style={{width: boxWidth}}>
       {
         searchResults.map(
-          (data : {name : string, author : string, album : string, id : string}, i : number) => {
+          (data : Song, i : number) => {
             return (<button onClick={(e)=>{
               e.preventDefault()
               setCurrentSearchResults([], Date.now())
               onClick(data)
-              setQuery(`${data.name} - ${data .author}`)
+              setQuery(`${data.name} - ${data.author}`)
 
               }} className={`flex text-left w-full p-2  ${growDown ? "" : ""}  ${light ? "text-white hover:bg-gray-900" : "text-black hover:bg-gray-100"}`} key={i}>
               <div className="text-ellipsis truncate text-nowrap min-w-0">{data.name}</div>
@@ -92,7 +94,7 @@ const SearchBar = ({boxWidth, growDown, light, placeholder, type, onClick, onCha
   return (
     <div>
       {!growDown && results()}
-      <input value={query} onChange={searchQuery} style={{width: boxWidth, height: 48}} placeholder={placeholder} className={` ${light ? "transition bg-transparent duration-300 border-2 p-2 rounded-md text-white border-[#887880] hover:border-white focus:border-white focus:outline-none" : "transition-color duration-300 border-2 p-2 rounded-md text-gray-700 w-96 hover:border-[#887880] focus:border-[#887880] focus:outline-none"}`}></input>
+      <input disabled={disable} value={query} onChange={searchQuery} style={{width: boxWidth, height: 48}} placeholder={placeholder} className={` ${light ? `transition bg-transparent duration-300 border-2 p-2 rounded-md  border-[#887880]  focus:outline-none ${disable ? "text-[#887880] cursor-not-allowed" : "hover:border-white focus:border-white text-white"}` : "transition-color duration-300 border-2 p-2 rounded-md text-gray-700 w-96 hover:border-[#887880] focus:border-[#887880] focus:outline-none"}`}></input>
       {growDown && results()}
     </div>
   )
@@ -102,9 +104,9 @@ const SearchBar = ({boxWidth, growDown, light, placeholder, type, onClick, onCha
 function Home({signInHandler} : {signInHandler : ()=> void}){
   return (
     <div className="flex min-h-screen  items-center  w-screen overflow-hidden select-none">
-      <div className="flex items-center justify-center w-1/2 min-h-screen ml-[10%]">
-        <div className="flex justify-center items-center animate-slow-spin aspect-square w-4/5">
-          <img src="Emblem_of_the_United_Nations.svg" draggable="false" className="w-full drop-shadow-[20px_20px_35px_rgba(0,0,0,0.30)]"></img>
+      <div className="flex items-center justify-center w-1/2 min-h-screen ml-[10%] ">
+        <div className="flex justify-center items-center  aspect-square w-4/5 drop-shadow-[20px_20px_35px_rgba(0,0,0,0.30)]">
+          <img src="Emblem_of_the_United_Nations.svg" draggable="false" className="w-full animate-slow-spin "></img>
         </div>
         <div className="rounded-full bg-[#EF8275] border-4	border-[#EF8275] w-[13%] aspect-square absolute"></div>
         <img src="noun-wood-texture-586023.svg" draggable="false" className="w-[13%]  animate-slow-spin  opacity-[0.05] absolute"></img>
@@ -124,7 +126,7 @@ function Home({signInHandler} : {signInHandler : ()=> void}){
   )
 }
 
-function Marquee({marqueeWidth, edgeWidth, endPause, selectedSong} : {marqueeWidth : number, edgeWidth : number, endPause : number, selectedSong : {name : string, author : string, album : string, id : string}}){
+function Marquee({marqueeWidth, edgeWidth, height, endPause, selectedSong, children} : {marqueeWidth : number, height: number, edgeWidth : number, endPause : number, selectedSong : Song, children : React.ReactNode }){
   const [position, setPosition] = useState(edgeWidth)
   const animationId = useRef<number>(0)
   const sliderRef = useRef<HTMLHeadingElement>(null)
@@ -166,13 +168,13 @@ function Marquee({marqueeWidth, edgeWidth, endPause, selectedSong} : {marqueeWid
     animationId.current = window.requestAnimationFrame(()=>{animate(edgeWidth, -1, endPause)})
 
     return ()=>{cancelAnimationFrame(animationId.current)}
-  },[selectedSong])
+  }, [selectedSong])
 
   return (
     <div className={`flex`} style={{ transform: `translateX(${-edgeWidth*2}px)` }}>
       <div style={{width: edgeWidth, transform: `translateX(${edgeWidth}px)`}} className={` ${showSide ? "bg-gradient-to-l from-transparent via-white to-white" : ""} z-10 `}></div>
-      <div className={`text-nowrap overflow-x-hidden h-[62px]`} style={{width: marqueeWidth}}> 
-        <h1 ref={sliderRef} className="text-5xl w-min" style={{ transform: `translateX(${position}px)` }}>{selectedSong.name}</h1>
+      <div className={`text-nowrap overflow-x-hidden`} style={{width: marqueeWidth, height: height}}> 
+        <div ref={sliderRef} className="w-fit" style={{ transform: `translateX(${position}px)` }}>{children}</div>
       </div>
       <div style={{width: edgeWidth, transform: `translateX(${-edgeWidth}px)`}} className={`${showSide ? "bg-gradient-to-r from-transparent via-white to-white" : ""}`}></div>
     </div>
@@ -181,6 +183,8 @@ function Marquee({marqueeWidth, edgeWidth, endPause, selectedSong} : {marqueeWid
 
 function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 112, height: 112}}></div>
   const selectedSong = useContext(SongContext).value
+  const setSelectedSong = useContext(SongContext).setValue
+
   const scriptsLoaded = useRef(false)
   const [deviceId, setDeviceId] = useState("")
   const [coordinates, setCoordinates] = useState({x: 0, y: 0})
@@ -279,6 +283,21 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
             console.log('Device ID has gone offline', device_id)
         })
 
+        player.addListener('player_state_changed', ((info : Record<string, any>) => {
+          if(!info){
+            return 
+          }
+          const current_track = info.track_window.current_track
+          setSelectedSong(
+            (prev : Song) => {
+              if(prev.id === current_track.id){
+                return prev
+              }
+              return {name : current_track.name, author : current_track.artists.map((artist : Record<string, any>)=>artist.name).join(", "), album : current_track.album.name, id : current_track.id}
+            }
+          )
+        }))
+
         player.connect()
 
         setPlayer(player)
@@ -291,8 +310,13 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
         {selectedSong.id !== "" &&
         <div className="w-full">
             
-            <Marquee marqueeWidth={600} edgeWidth={48} endPause={60} selectedSong={selectedSong}></Marquee>
-            <h2 className="text-ellipsis truncate text-nowrap" style={{width: 500}}>{`${selectedSong.author} - ${selectedSong.album}`}</h2>
+            <Marquee marqueeWidth={600} height={62} edgeWidth={48} endPause={120} selectedSong={selectedSong}>
+              <h1 className="text-5xl w-min" >{selectedSong.name}</h1>
+            </Marquee>
+            <Marquee marqueeWidth={600} height={25} edgeWidth={48} endPause={120} selectedSong={selectedSong}>
+              <h2 >{`${selectedSong.author} - ${selectedSong.album}`}</h2>
+            </Marquee>
+
             <h2 className="pt-2 text-gray-500">{`${coordinates.x}, ${coordinates.y}`}</h2>
           </div>
         }
@@ -328,9 +352,7 @@ function Vinyls(){
         }
       }).then(
         (response : Record<string, any>) => {
-          setSongs(prev => {
-            return [...prev, response.data.neighbours]
-          })
+          setSongs(response.data.neighbours)
         }
       )
     }
@@ -338,7 +360,10 @@ function Vinyls(){
   }, [selectedSong])
   return (
     <div className="flex justify-center items-center absolute top-0 left-0 w-screen h-screen -z-10">
-      {false && <div>
+      {selectedSong.id === "" && <div>
+        <h1 className="text-lg text-gray-400 text-center">Search for a song using the search bar below!</h1>
+      </div>}
+      {songs.length === 0 && selectedSong.id !== "" && <div>
         <h1 className="text-2xl text-gray-400 text-center">We're in uncharted waters here...</h1>
         <h2 className="text-gray-400 text-center ">Contribute to add this song!</h2>
       </div>}
@@ -351,7 +376,7 @@ function Search(){
 
   return (
     <>
-      <SearchBar onChange={()=>{}} boxWidth={400} type="track" growDown={false} light={false} placeholder="Search by track or keyword" onClick={(data)=>{setSelectedSong(data)}}></SearchBar>
+      <SearchBar disable={false} defaultSearch={""} onChange={()=>{}} boxWidth={400} type="track" growDown={false} light={false} placeholder="Search by track or keyword" onClick={(data)=>{setSelectedSong(data)}}></SearchBar>
     </>
   )
 }
@@ -360,11 +385,13 @@ function Contribute(){
   const [showSearch, setShowSearch] = useState(false)
   const [fadeIn, setFadeIn] = useState(false)
 
-  const [tracks, setTracks] = useState<Array<{name : string, author : string, album : string, id : string}>>([])
-  const [playlistId, setPlaylistId] = useState("")
+  const [tracks, setTracks] = useState<Array<Song>>([])
+  const [playlist, setPlaylist] = useState({name : "", author : "", album : "", id : ""})
+  const [defaultSearch, setDefaultSearch] = useState("");
   const [loading, setLoading] = useState(false)
   const [disable, setDisable] = useState(false)
-
+  const [showThanks, setShowThanks] = useState(false)
+  
   async function contributeTracks(){
     setDisable(true)
     await axios({
@@ -372,10 +399,12 @@ function Contribute(){
       url: `/api/contribute`,
       data: {
         tracks: tracks.map(track => track.id),
-        playlist: playlistId
+        playlist: playlist
       }
     })
     setDisable(false)
+    //setShowThanks(true)
+    //setTimeout(()=>{setShowThanks(false)}, 1000)
   }
 
   return (
@@ -385,7 +414,15 @@ function Contribute(){
           <div className="top-0 left-0 absolute w-screen h-screen bg-black flex justify-center items-start pt-48">
 
               <div className="z-10">
-                <SearchBar onChange={()=>{setTracks([])}} boxWidth={560} type="playlist" growDown={true} light={true} placeholder="Search for a playlist" 
+                <SearchBar onChange={
+                  ()=>{
+                    setTracks([])
+                    setDefaultSearch("")
+                  }} 
+                  
+                  boxWidth={560} type="playlist" growDown={true} light={true} placeholder="Search for a playlist" 
+                  defaultSearch={defaultSearch}
+                  disable={disable}
                   onClick={
                   async (data) => {
                     setLoading(true)
@@ -394,13 +431,16 @@ function Contribute(){
                       url : `/api/playlist-tracks?id=${data.id}`
                     })
                     setLoading(false)
+
                     setTracks(response.data.items.map(
                       (item : Record<string, any>) => {
                         return {name : item.track.name, author : item.track.artists.map((artist : Record<string, any>)=>artist.name).join(", "), album : item.track.album.name, id: item.track.id}
                       }
                     ))
-                    setPlaylistId(data.id)
+                    setPlaylist(data)
+                    setDefaultSearch(`${data.name} - ${data.author}`)
                   }
+
                   }></SearchBar>
                   {
                     loading && <div className="w-full flex justify-center pt p-4">
@@ -414,13 +454,17 @@ function Contribute(){
                       { tracks.map(
                         (track : {name : string, author : string, album : string}, i) => {
                           return (<div className=" mt-2" key={i}>
-                            <h1 className="text-white text-nowrap truncate text-ellipsis">{track.name}</h1>
-                            <h2 className="text-gray-300 text-xs text-nowrap truncate text-ellipsis">{`${track.author} - ${track.album}`}</h2>
+                            <h1 className={` text-nowrap truncate text-ellipsis ${disable ? "text-[#887880]" : "text-white"}`}>{track.name}</h1>
+                            <h2 className={` text-xs text-nowrap truncate text-ellipsis ${disable ? "text-[#887880]" : "text-gray-300"}`} >{`${track.author} - ${track.album}`}</h2>
                           </div>)
                         }
                       )}
                     </div>
-                    <button onClick={contributeTracks} className="mt-2 transition-color duration-300 border-2 p-2 rounded-md text-white border-[#887880] cursor-pointer hover:border-white">Submit</button>
+                    <div className="flex items-center">
+                      <button disabled={disable} onClick={contributeTracks} className={`mt-2 transition-color duration-300 border-2 p-2 rounded-md border-[#887880] cursor-pointer  ${disable ? "cursor-not-allowed text-[#887880]" : "text-white hover:border-white"}`}>Submit</button>
+                      {disable && <div className="p-2"><SyncLoader color="#887880" loading={true} size={5}></SyncLoader></div>}
+                      {showThanks && <p className="p-2 text-white text-[#887880]">Submission accepted!</p>}
+                    </div>
                     <style>
                       {`
                         /* width */
@@ -435,7 +479,7 @@ function Contribute(){
 
                         /* Handle */
                         ::-webkit-scrollbar-thumb {
-                          background: white;
+                          background: ${disable ? "#887880" : "white"};
                           border-radius: 5px;
                         }
                       `}
@@ -446,7 +490,6 @@ function Contribute(){
               <div onClick={()=>{
               setFadeIn(false)
               setTimeout(()=>setShowSearch(false), 300)
-              setTracks([])
               }} className="top-0 left-0 w-full h-full absolute"></div>
           </div>
         }
@@ -461,7 +504,7 @@ function Contribute(){
 }
 
 function Map({handleLogout} : {handleLogout : ()=>void}){
-  const [selectedSong, setSelectedSong] = useState<{name : string, author : string, album : string, id : string}>({name : "", author : "", album : "", id : ""})    
+  const [selectedSong, setSelectedSong] = useState<Song>({name : "", author : "", album : "", id : ""})    
   
   return (
     <SongContext.Provider value={{value : selectedSong, setValue : setSelectedSong}}>
