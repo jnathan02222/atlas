@@ -4,11 +4,21 @@ Good things to put on resume
 
 OVERALL SUMMARY 
 -Display 
+    -Creating data structures DONE
+    -Forces (add connection lines, smooth center camera)
+        Damping/Cooling Factor / Threshold for Stopping
+        Force Strengths / Additional Forces or Constraints
+        Integration Method
+        Starting point
+    -Interactions (hover, click, size increase, spawn in transition)
+    -Lettering (backend returns track)
+    
 -Guest search DONE
 
 -Embeddings + vector database (AWS hosting)
     -Store in vector db 
-    -K clustering
+    -K clustering + display text
+    -Make numbers mean something?
 -Error handling 
 
 Contribute
