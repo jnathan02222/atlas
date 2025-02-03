@@ -122,7 +122,7 @@ const SearchBar = ({boxWidth, growDown, light, placeholder, type, onClick, onCha
   }
 
   return (
-    <div>
+    <div className="z-10">
       {!growDown && results()}
       <input disabled={disable} value={query} onChange={searchQuery} style={{width: boxWidth, height: 48}} placeholder={placeholder} className={` ${light ? `transition bg-transparent duration-300 border-2 p-2 rounded-md  border-[#887880]  focus:outline-none ${disable ? "text-[#887880] cursor-not-allowed" : "hover:border-white focus:border-white text-white"}` : "transition-color duration-300 border-2 p-2 rounded-md text-gray-700 w-96 hover:border-[#887880] focus:border-[#887880] focus:outline-none"}`}></input>
       {growDown && results()}
@@ -355,19 +355,24 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
   )
 }
 
-type Disk = {x: number, y: number, image: number, velocity : {x : number, y : number}, song : Song} 
+type Disk = {x: number, y: number, image: number, velocity : {x : number, y : number}, song : Song, opacity : number, size : number} 
 type Correlation = {songa: string, songb: string, count: number}
 
 function Vinyls(){
   const selectedSong = useContext(SongContext).value
+  const setSelectedSong = useContext(SongContext).setValue
 
   const [discs, setDiscs] = useState<Record<string, Disk>>({})
   const correlations = useRef<Record<string, number>>({})
-
+  const focusedDisks = useRef<Set<string>>(new Set())
+  
   const [stageDimensions, setStageDimensions] = useState({w: window.innerWidth, h : window.innerHeight})
   const animationRef = useRef(0)
   const [rotation, setRotation] = useState(0)
   const movementDamp = useRef(0)
+  const [camera, setCamera] = useState({x : 0, y : 0})
+  const cameraTarget = useRef({x : 0, y : 0})
+
   const imagePaths = ['/vinyl1.svg', '/vinyl2.svg', '/vinyl3.svg', '/vinyl4.svg', '/vinyl5.svg'];
   const images = imagePaths.map(path => {
     const [image] = useImage(path)
@@ -387,13 +392,18 @@ function Vinyls(){
       }).then(
         (response : Record<string, any>) => {
           movementDamp.current = 1
+          
+          const tracks : Record<string, Song> = {}
+          response.data.tracks.forEach((track : Record<string, any>)=>{
+            tracks[track.id] = {name : track.name, author : track.artists.map((artist : Record<string, any>) => artist.name).join(', '), album : track.album.name, id : track.id}
+          })
 
           setDiscs(prev => {
             var updatedDisks = {...prev}
             
-            
             //Check if there is a link between currently displayed songs and new songs
             const neighbours : Array<Correlation> = response.data.neighbours 
+            
             var connected = false
             for(const neighbour of neighbours){
               if(prev[neighbour.songa] || prev[neighbour.songb]){
@@ -407,13 +417,40 @@ function Vinyls(){
               correlations.current = {}
               updatedDisks = {}
             }
+          
             
+            if(!updatedDisks[selectedSong.id] && neighbours.length > 0){
+              updatedDisks[selectedSong.id] = {
+                x : 0, 
+                y : 0, 
+                image : Math.floor(Math.random()*images.length), 
+                velocity : {x : 0, y : 0}, 
+                opacity : 0,
+                song : tracks[selectedSong.id],
+                size : 1
+              }
+            }
+            focusedDisks.current = new Set()
+            focusedDisks.current.add(selectedSong.id)
+
+            function getRandomDisk(spread : number, id : string){
+              return {
+                x : updatedDisks[selectedSong.id].x + (Math.random()-0.5) * spread, 
+                y : updatedDisks[selectedSong.id].y + (Math.random()-0.5) * spread, 
+                image : Math.floor(Math.random()*images.length),
+                velocity : {x : 0, y : 0}, 
+                opacity : 0,
+                song : tracks[id],
+                size : 1
+              }
+            }
+
             for(const neighbour of neighbours){
               if(!updatedDisks[neighbour.songa]){
-                updatedDisks[neighbour.songa] = {x : Math.random()*stageDimensions.w, y : Math.random()*stageDimensions.h, image : Math.floor(Math.random()*images.length), velocity : {x : 0, y : 0}, song : {name : "", author : "", album : "", id : ""}}
+                updatedDisks[neighbour.songa] = getRandomDisk(300, neighbour.songa)
               }
               if(!updatedDisks[neighbour.songb]){
-                updatedDisks[neighbour.songb] = {x : Math.random()*stageDimensions.w, y : Math.random()*stageDimensions.h, image : Math.floor(Math.random()*images.length), velocity : {x : 0, y : 0}, song : {name : "", author : "", album : "", id : ""}}
+                updatedDisks[neighbour.songb] = getRandomDisk(300, neighbour.songb)
               }
               if(!correlations.current[`${neighbour.songa}${neighbour.songb}`]){
                 correlations.current[`${neighbour.songa}${neighbour.songb}`] = neighbour.count
@@ -447,20 +484,55 @@ function Vinyls(){
     function animate(){
       //Potentially expensive, look into optimizations
       setRotation(prev => prev + 0.5)
+
+      setCamera(prev => {
+        const distanceDivisor = 30
+        return {x : prev.x + (cameraTarget.current.x-prev.x)/distanceDivisor , y : prev.y + (cameraTarget.current.y-prev.y)/distanceDivisor }
+      })
+
+
       
       setDiscs(prev => {
+        if(prev[selectedSong.id]){
+          cameraTarget.current = {x : prev[selectedSong.id].x , y : prev[selectedSong.id].y}
+        }
+        
+
         const updatedDiscs : Record<string, Disk> = {...prev}
 
         if(movementDamp.current > 0){
-          movementDamp.current -= 0.0005
+          //movementDamp.current -= 0.0005
         }else{
           movementDamp.current = 0
           return updatedDiscs
         }
-        //Update location
-        for (const disc of Object.values(updatedDiscs)) {
-          disc.x += disc.velocity.x * movementDamp.current
-          disc.y += disc.velocity.y * movementDamp.current
+    
+
+        //Update location and opacity
+        for (const [id, disc] of Object.entries(updatedDiscs)) {
+          if(focusedDisks.current.has(id)){
+            if(disc.size < 1.5){
+              disc.size += 0.01
+            }else{
+              disc.size = 1.5
+            }
+          }else{
+            if(disc.size > 1){
+              disc.size -= 0.01
+            }else{
+              disc.size = 1
+            }
+          }
+          
+          if(!focusedDisks.current.has(id) || id === selectedSong.id){
+            disc.x += disc.velocity.x * movementDamp.current
+            disc.y += disc.velocity.y * movementDamp.current
+          }
+          if(disc.opacity < 1){
+            disc.opacity += 0.01
+          }else{
+            disc.opacity = 1
+          }
         }
 
         //Update velocity
@@ -496,10 +568,10 @@ function Vinyls(){
       animationRef.current = window.requestAnimationFrame(animate)
     }
     animationRef.current = window.requestAnimationFrame(animate)
-  }, [])
+  }, [selectedSong])
 
   return (
-    <div className="flex justify-center items-center absolute top-0 left-0 w-screen h-screen -z-10">
+    <div className="flex justify-center items-center absolute top-0 left-0 w-screen h-screen">
       {Object.values(discs).length !== 0 &&
        <Stage width={stageDimensions.w} height={stageDimensions.h}>
         <Layer>
@@ -511,33 +583,46 @@ function Vinyls(){
 
             return <Line
               key={index}
-              points={[discs[songA].x, discs[songA].y, discs[songB].x, discs[songB].y]} // (x1, y1, x2, y2)
+              points={[
+                discs[songA].x + stageDimensions.w/2  - camera.x, 
+                discs[songA].y + stageDimensions.h/2  - camera.y, 
+                discs[songB].x + stageDimensions.w/2  - camera.x, 
+                discs[songB].y + stageDimensions.h/2  - camera.y
+              ]} // (x1, y1, x2, y2)
               stroke="#f3f4f6"
               strokeWidth={4}
               lineCap="round"
               lineJoin="round"
+              opacity={Math.min(discs[songA].opacity, discs[songB].opacity)}
             ></Line>
           })
         }
         {
-          Object.values(discs).map((song, index) => {
+          Object.entries(discs).map(([id, disc], index) => {
             return  <Image
               key={index}
-              image={images[song.image]}
-              x={song.x}           
-              y={song.y}     
-              width={100} 
-              height={100}  
-              offsetX={50} // Center x-axis
-              offsetY={50} // Center y-axis
+              image={images[disc.image]}
+              x={disc.x + stageDimensions.w/2 - camera.x}           
+              y={disc.y + stageDimensions.h/2 - camera.y}     
+              opacity={disc.opacity}
+              width={100*disc.size} 
+              height={100*disc.size}  
+              offsetX={50*disc.size} // Center x-axis
+              offsetY={50*disc.size} // Center y-axis
               rotation={rotation}
               shadowColor="black"
               shadowBlur={10}
               shadowOpacity={0.3}
               shadowOffsetX={5}
               shadowOffsetY={5}
+              onMouseEnter={()=>{focusedDisks.current.add(id)}}
+              onMouseLeave={()=>{if(id!==selectedSong.id)focusedDisks.current.delete(id)}}
+              onClick={()=>{setSelectedSong(disc.song)}}
             />
           })
+        }
+        {
+          
         }
         </Layer>
       </Stage>}
@@ -590,7 +675,7 @@ function Contribute(){
 
   return (
     <>
-      <div className={`duration-300 transition  ${fadeIn ? "opacity-80" : "opacity-0"}`}>
+      <div className={`z-50 duration-300 transition  ${fadeIn ? "opacity-80" : "opacity-0"}`}>
         {showSearch && 
           <div className="top-0 left-0 absolute w-screen h-screen bg-black flex justify-center items-start pt-48">
 
@@ -679,7 +764,7 @@ function Contribute(){
       <button onClick={()=>{
         setShowSearch(true) 
         setFadeIn(true)
-      }} className="bg-white transition-color duration-300 border-2 p-2  rounded-md text-gray-700 cursor-pointer hover:border-[#887880]">Contribute</button>
+      }} className="z-10 bg-white transition-color duration-300 border-2 p-2  rounded-md text-gray-700 cursor-pointer hover:border-[#887880]">Contribute</button>
     </>
   )
 }
@@ -690,19 +775,19 @@ function Map({handleLogout} : {handleLogout : ()=>void}){
   return (
     <SongContext.Provider value={{value : selectedSong, setValue : setSelectedSong}}>
       <div className="w-screen h-screen flex flex-col justify-between">
-        <div className="flex justify-between items-start   p-16">
+        <div className="flex justify-between items-start  p-16">
           <Player ></Player>
-          <button onClick={handleLogout} className="bg-white transition-color duration-300 border-2 p-2 h-12 rounded-md text-gray-700 cursor-pointer hover:border-[#887880]">Log Out</button>
+          <button onClick={handleLogout} className="bg-white transition-color duration-300 border-2 p-2 h-12 rounded-md text-gray-700 cursor-pointer hover:border-[#887880] z-10">Log Out</button>
 
         </div>
         <Vinyls></Vinyls>
-        <div className="flex justify-between items-end   p-16">
+        <div className="flex justify-between items-end p-16">
           <div className="flex gap-1 items-end">
             <Search></Search>
           </div>
           <div className="flex gap-1"> 
             <Contribute></Contribute>
-            <button className="bg-white transition-color duration-300 border-2 p-2 w-12 h-12 rounded-md text-gray-700 cursor-pointer hover:border-[#887880]">?</button>
+            <button className="z-10 bg-white transition-color duration-300 border-2 p-2 w-12 h-12 rounded-md text-gray-700 cursor-pointer hover:border-[#887880]">?</button>
 
           </div>
         </div>

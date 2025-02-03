@@ -82,6 +82,18 @@ async function getSpotifyPlaylist(token, req){
   })
 }
 
+async function getSpotifyTracks(token, ids){
+  return axios({
+    method: 'get',
+    url : `https://api.spotify.com/v1/tracks`,
+    headers: {
+      'Authorization': 'Bearer ' + token,
+    },
+    params: {
+      ids: ids.join(",")
+    }
+  })
+}
 
 
 
@@ -191,11 +203,35 @@ app.put('/api/contribute', async (req, res) => {
 app.get('/api/neighbours', (req, res) => {
   const track_id = req.query.track_id
   db.any(`SELECT * FROM correlations WHERE songA = '${track_id}' OR songB = '${track_id}'`).then(
-    (data)=>{
+    async (data)=>{
       //Select all playlists that contain the song 
       //Get vectors for each playlist
       //K cluster
-      res.json({neighbours : data})
+      const neighbours = data.sort((a, b) => a.count - b.count).slice(0, 5)
+      const ids = [...neighbours.map((neighbour) => neighbour.songa !== track_id ? neighbour.songa : neighbour.songb), track_id]
+      console.log(ids)
+
+      try{
+        const response = await getSpotifyTracks(req.cookies['spotify_token'], ids)
+        res.json({neighbours : neighbours, tracks : response.data.tracks})
+      }catch(error){
+        console.log(error)
+        for(var i = 0; i < 3; i++){ //Attempt 3 times
+          try {
+            //Use general token
+            const response = await getSpotifyTracks(await readGlobalSpotifyToken(), ids)
+            res.json({neighbours : neighbours, tracks : response.data.tracks})
+            break
+          } catch (error) {
+            console.log(error)
+            if(error.status !== 401){
+              break
+            }
+            await refreshToken()
+          }
+        }
+      }
+
     }
   ).catch(
     error => {
