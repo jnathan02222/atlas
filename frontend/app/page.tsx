@@ -501,10 +501,10 @@ function Vinyls(){
         const updatedDiscs : Record<string, Disk> = {...prev}
 
         if(movementDamp.current > 0){
-          //movementDamp.current -= 0.0005
+          movementDamp.current -= 0.0005
         }else{
           movementDamp.current = 0
-          return updatedDiscs
+          //return updatedDiscs
         }
     
 
@@ -622,7 +622,7 @@ function Vinyls(){
           })
         }
         {
-          
+
         }
         </Layer>
       </Stage>}

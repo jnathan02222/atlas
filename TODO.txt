@@ -21,7 +21,8 @@ OVERALL SUMMARY
     -K clustering + display text
     -Make numbers mean something?
 -Error handling + logged out message 
--Add a velocity limit?
+-Add a velocity limit? Check that this is not buggy?
+-Bug - panyolo color not going through 
 
 Contribute
 -Show search bar when button is clicked DONE

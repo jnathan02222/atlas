@@ -209,7 +209,6 @@ app.get('/api/neighbours', (req, res) => {
       //K cluster
       const neighbours = data.sort((a, b) => a.count - b.count).slice(0, 5)
       const ids = [...neighbours.map((neighbour) => neighbour.songa !== track_id ? neighbour.songa : neighbour.songb), track_id]
-      console.log(ids)
 
       try{
         const response = await getSpotifyTracks(req.cookies['spotify_token'], ids)
