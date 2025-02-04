@@ -493,7 +493,7 @@ function Vinyls(){
       setRotation(prev => prev + 0.5)
 
       setCamera(prev => {
-        const distanceDivisor = 25
+        const distanceDivisor = 10
         return {x : prev.x + (cameraTarget.current.x-prev.x)/distanceDivisor , y : prev.y + (cameraTarget.current.y-prev.y)/distanceDivisor }
       })
 
