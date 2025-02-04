@@ -3,26 +3,29 @@ Good things to put on resume
 //Make call to database to update word list and tick up counter for songs 
 
 OVERALL SUMMARY 
+-Guest search DONE
+
 -Display 
     -Creating data structures DONE
     -Forces (add connection lines, smooth center camera) DONE
         Damping/Cooling Factor / Threshold for Stopping DONE
         Force Strengths / Additional Forces or Constraints DONE
-        Integration Method <----- 
         Starting point DONE
+        Integration method DONE?
     -Interactions (size increase, spawn in transition) DONE
     -(backend returns track) + clicking DONE 
-    -hover info + Lettering
-    
--Guest search DONE
+    -hover info + Lettering <----- 1
 
--Embeddings + vector database (AWS hosting)
+-Add a velocity limit? Check that this is not buggy? <----- 2
+    -Integration method
+-Bug - panyolo color not going through <----- 3
+    -Unrelated bug: seems to try to play it twice at the start of a queued song
+-Error handling + logged out message <----- 4
+-Embeddings + vector database (AWS hosting) <----- 5
     -Store in vector db 
-    -K clustering + display text
+-K clustering + display text (k means++, k means, silhouette) <---- 6
     -Make numbers mean something?
--Error handling + logged out message 
--Add a velocity limit? Check that this is not buggy?
--Bug - panyolo color not going through 
+
 
 Contribute
 -Show search bar when button is clicked DONE
@@ -80,3 +83,7 @@ greek
 spotify
 serif
 website
+
+jams should work in theory 
+must use computer
+must have email ready

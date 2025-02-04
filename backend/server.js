@@ -166,12 +166,12 @@ app.get('/api/playlist-tracks', async (req, res) => {
 app.put('/api/contribute', async (req, res) => {
 
   //Get vector embedding if necessary
-  const response = await openai.embeddings.create({
+  /*const response = await openai.embeddings.create({
     model: "text-embedding-3-small",
     input: `Playlist title: ${req.body.playlist.name}`,
     encoding_format: "float",
     dimensions: 512
-  })
+  })*/
   //console.log(response.data)
   //Error handling
 

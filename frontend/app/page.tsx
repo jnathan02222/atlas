@@ -501,7 +501,7 @@ function Vinyls(){
         const updatedDiscs : Record<string, Disk> = {...prev}
 
         if(movementDamp.current > 0){
-          movementDamp.current -= 0.0005
+          //movementDamp.current -= 0.0005
         }else{
           movementDamp.current = 0
           //return updatedDiscs
@@ -774,14 +774,14 @@ function Map({handleLogout} : {handleLogout : ()=>void}){
   
   return (
     <SongContext.Provider value={{value : selectedSong, setValue : setSelectedSong}}>
-      <div className="w-screen h-screen flex flex-col justify-between">
-        <div className="flex justify-between items-start  p-16">
+      <div className="w-screen h-screen flex flex-col justify-between p-16">
+        <div className="flex justify-between items-start">
           <Player ></Player>
           <button onClick={handleLogout} className="bg-white transition-color duration-300 border-2 p-2 h-12 rounded-md text-gray-700 cursor-pointer hover:border-[#887880] z-10">Log Out</button>
 
         </div>
         <Vinyls></Vinyls>
-        <div className="flex justify-between items-end p-16">
+        <div className="flex justify-between items-end">
           <div className="flex gap-1 items-end">
             <Search></Search>
           </div>
