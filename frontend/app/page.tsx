@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef, memo, createContext, useContext } from "react"
 import axios from "axios"
 import { SyncLoader } from 'react-spinners'
-import { Stage, Layer, Image, Line } from 'react-konva';
+import { Stage, Layer, Image, Line, Text, Group } from 'react-konva';
 import useImage from 'use-image';
 
 //https://coolors.co/cb3342-686963-8aa29e-3d5467-f1edee
@@ -38,6 +38,11 @@ function getXYDifference(distance : number, angle : number) {
   const dy = distance * Math.sin(angle);
 
   return { dx: dx, dy: dy };
+}
+
+function shortenVector(v : {x : number, y : number}, scale : number) {
+  v.x = v.x * scale 
+  v.y = v.y * scale
 }
 
 const SearchBar = ({boxWidth, growDown, light, placeholder, type, onClick, onChange, defaultSearch, disable} : { boxWidth : number, growDown : boolean, light : boolean, placeholder : string, type : "playlist" | "track", onClick : (data : Song) => void, onChange : () => void, defaultSearch : string, disable : boolean}) => {
@@ -355,7 +360,7 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
   )
 }
 
-type Disk = {x: number, y: number, image: number, velocity : {x : number, y : number}, song : Song, opacity : number, size : number} 
+type Disk = {x: number, y: number, image: number, velocity : {x : number, y : number}, acceleration : {x : number, y : number}, song : Song, opacity : number, size : number} 
 type Correlation = {songa: string, songb: string, count: number}
 
 function Vinyls(){
@@ -425,6 +430,7 @@ function Vinyls(){
                 y : 0, 
                 image : Math.floor(Math.random()*images.length), 
                 velocity : {x : 0, y : 0}, 
+                acceleration : {x : 0, y : 0}, 
                 opacity : 0,
                 song : tracks[selectedSong.id],
                 size : 1
@@ -439,6 +445,7 @@ function Vinyls(){
                 y : updatedDisks[selectedSong.id].y + (Math.random()-0.5) * spread, 
                 image : Math.floor(Math.random()*images.length),
                 velocity : {x : 0, y : 0}, 
+                acceleration : {x : 0, y : 0}, 
                 opacity : 0,
                 song : tracks[id],
                 size : 1
@@ -486,7 +493,7 @@ function Vinyls(){
       setRotation(prev => prev + 0.5)
 
       setCamera(prev => {
-        const distanceDivisor = 30
+        const distanceDivisor = 25
         return {x : prev.x + (cameraTarget.current.x-prev.x)/distanceDivisor , y : prev.y + (cameraTarget.current.y-prev.y)/distanceDivisor }
       })
 
@@ -496,7 +503,6 @@ function Vinyls(){
         if(prev[selectedSong.id]){
           cameraTarget.current = {x : prev[selectedSong.id].x , y : prev[selectedSong.id].y}
         }
-        
 
         const updatedDiscs : Record<string, Disk> = {...prev}
 
@@ -507,34 +513,33 @@ function Vinyls(){
           //return updatedDiscs
         }
     
-
         //Update location and opacity
         for (const [id, disc] of Object.entries(updatedDiscs)) {
           if(focusedDisks.current.has(id)){
             if(disc.size < 1.5){
-              disc.size += 0.01
+              disc.size += 0.05
             }else{
               disc.size = 1.5
             }
           }else{
             if(disc.size > 1){
-              disc.size -= 0.01
+              disc.size -= 0.05
             }else{
               disc.size = 1
             }
           }
           
           if(!focusedDisks.current.has(id) || id === selectedSong.id){
-            disc.x += disc.velocity.x * movementDamp.current
-            disc.y += disc.velocity.y * movementDamp.current
+            disc.x += (disc.velocity.x + disc.acceleration.x/2)*movementDamp.current 
+            disc.y += (disc.velocity.y + disc.acceleration.y/2)*movementDamp.current 
           }
           if(disc.opacity < 1){
-            disc.opacity += 0.01
+            disc.opacity += 0.05
           }else{
             disc.opacity = 1
           }
         }
-
+        
         //Update velocity
         for (const combo of getCombinations(Object.keys(updatedDiscs))){
           //Coulomb's law
@@ -545,29 +550,49 @@ function Vinyls(){
           if(distanceAndAngle.distance === 0){ //Prevent infinite force
             force = 1
           }
+
           //Coulomb's law
+          const newAccelerationA = {x : 0, y : 0}
+          const newAccelerationB = {x : 0, y : 0}
           var change = getXYDifference(force, distanceAndAngle.angle)
-          discA.velocity.x -= change.dx
-          discA.velocity.y -= change.dy
-          discB.velocity.x += change.dx
-          discB.velocity.y += change.dy
+          newAccelerationA.x -= change.dx
+          newAccelerationA.y -= change.dy
+          newAccelerationB.x += change.dx
+          newAccelerationB.y += change.dy
           
           //Hooke's law
           if(correlations.current[`${combo[0]}${combo[1]}`]){
-            change = getXYDifference(correlations.current[`${combo[0]}${combo[1]}`]*distanceAndAngle.distance/1000000, distanceAndAngle.angle)
-            discA.velocity.x += change.dx
-            discA.velocity.y += change.dy
-            discB.velocity.x -= change.dx
-            discB.velocity.y -= change.dy
+            change = getXYDifference(correlations.current[`${combo[0]}${combo[1]}`]*(distanceAndAngle.distance-150)/100000, distanceAndAngle.angle)
+            newAccelerationA.x += change.dx
+            newAccelerationA.y += change.dy
+            newAccelerationB.x -= change.dx
+            newAccelerationB.y -= change.dy
           }
+          //Friction
+          shortenVector(newAccelerationA, movementDamp.current)
+          shortenVector(newAccelerationB, movementDamp.current)
+
+          discA.velocity.x += (discA.acceleration.x +  newAccelerationA.x)/2
+          discA.velocity.y += (discA.acceleration.y +  newAccelerationA.y)/2
+          discB.velocity.x += (discB.acceleration.x +  newAccelerationB.x)/2
+          discB.velocity.y += (discB.acceleration.y +  newAccelerationB.y)/2
+
+          discA.acceleration = newAccelerationA 
+          discB.acceleration = newAccelerationB
         }
+        
+
         return updatedDiscs
       })
+
+      
 
 
       animationRef.current = window.requestAnimationFrame(animate)
     }
     animationRef.current = window.requestAnimationFrame(animate)
+
+    return ()=>{cancelAnimationFrame(animationRef.current)}
   }, [selectedSong])
 
   return (
@@ -599,26 +624,55 @@ function Vinyls(){
         }
         {
           Object.entries(discs).map(([id, disc], index) => {
-            return  <Image
-              key={index}
-              image={images[disc.image]}
-              x={disc.x + stageDimensions.w/2 - camera.x}           
-              y={disc.y + stageDimensions.h/2 - camera.y}     
-              opacity={disc.opacity}
-              width={100*disc.size} 
-              height={100*disc.size}  
-              offsetX={50*disc.size} // Center x-axis
-              offsetY={50*disc.size} // Center y-axis
-              rotation={rotation}
-              shadowColor="black"
-              shadowBlur={10}
-              shadowOpacity={0.3}
-              shadowOffsetX={5}
-              shadowOffsetY={5}
-              onMouseEnter={()=>{focusedDisks.current.add(id)}}
-              onMouseLeave={()=>{if(id!==selectedSong.id)focusedDisks.current.delete(id)}}
-              onClick={()=>{setSelectedSong(disc.song)}}
-            />
+            return (<Group key={index}>
+              <Image
+                
+                image={images[disc.image]}
+                x={disc.x + stageDimensions.w/2 - camera.x}           
+                y={disc.y + stageDimensions.h/2 - camera.y}     
+                opacity={disc.opacity}
+                width={100*disc.size} 
+                height={100*disc.size}  
+                offsetX={50*disc.size} // Center x-axis
+                offsetY={50*disc.size} // Center y-axis
+                rotation={rotation}
+                shadowColor="black"
+                shadowBlur={10}
+                shadowOpacity={0.3}
+                shadowOffsetX={5}
+                shadowOffsetY={5}
+                onMouseEnter={()=>{focusedDisks.current.add(id)}}
+                onMouseLeave={()=>{if(id!==selectedSong.id)focusedDisks.current.delete(id)}}
+                onClick={()=>{setSelectedSong(disc.song)}}
+              />
+              <Text
+                text={disc.song.name}
+                
+                x={disc.x + stageDimensions.w/2 - camera.x}           
+                y={disc.y + stageDimensions.h/2 - camera.y + 50*disc.size + 10}     
+                fontSize={16}
+                fontFamily="Noto Serif"
+                ellipsis={true}
+                width={200}
+                wrap="none"
+                
+              ></Text>
+
+              <Text
+                text={disc.song.author}
+                
+                x={disc.x + stageDimensions.w/2 - camera.x}           
+                y={disc.y + stageDimensions.h/2 - camera.y + 50*disc.size + 10 + 16 + 10}     
+                fontSize={12}
+                fontFamily="Noto Serif"
+                ellipsis={true}
+                width={200}
+                wrap="none"
+                fill="#6B7280"
+              ></Text>
+            </Group>)  
+            
+            
           })
         }
         {

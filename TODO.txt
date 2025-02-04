@@ -14,13 +14,17 @@ OVERALL SUMMARY
         Integration method DONE?
     -Interactions (size increase, spawn in transition) DONE
     -(backend returns track) + clicking DONE 
-    -hover info + Lettering <----- 1
+    -hover info + Lettering DONE
 
--Add a velocity limit? Check that this is not buggy? <----- 2
+-Add a velocity limit? Check that this is not buggy? DONE
     -Integration method
+    -Fixed animationframe bug
+
 -Bug - panyolo color not going through <----- 3
     -Unrelated bug: seems to try to play it twice at the start of a queued song
+    -Sometimes you click and it doubles back? DON'T QUEUE REQUESTS IF ONE ALREADY EXISTS
 -Error handling + logged out message <----- 4
+
 -Embeddings + vector database (AWS hosting) <----- 5
     -Store in vector db 
 -K clustering + display text (k means++, k means, silhouette) <---- 6
