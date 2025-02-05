@@ -377,6 +377,10 @@ function Vinyls(){
   const [camera, setCamera] = useState({x : 0, y : 0})
   const [zoom, setZoom] = useState(1)
   const cameraTarget = useRef({x : 0, y : 0})
+  const zoomTarget = useRef(1)
+
+ 
+  
 
   const imagePaths = ['/vinyl1.svg', '/vinyl2.svg', '/vinyl3.svg', '/vinyl4.svg', '/vinyl5.svg'];
   const images = imagePaths.map(path => {
@@ -384,7 +388,37 @@ function Vinyls(){
     return image
   });
   
+  const cameraLocked = useRef(false)
+  const mouseDown = useRef(false)
+  const mouseStart = useRef({x:0, y:0})
+  const cameraStart = useRef({x:0, y:0})
 
+  function handleMouseDown(e :  React.MouseEvent<HTMLDivElement, MouseEvent>){
+    mouseStart.current = {x : e.clientX, y : e.clientY}
+    mouseDown.current = true
+    cameraLocked.current = false 
+    cameraStart.current = camera
+  }
+  function handleMouseMove(e :  React.MouseEvent<HTMLDivElement, MouseEvent>){
+    if(!mouseDown.current){
+      return 
+    }
+    const start = renderedToCoordinate(mouseStart.current) 
+    const end = renderedToCoordinate({x : e.clientX, y : e.clientY})
+    
+    const newCamera = {x: cameraStart.current.x + start.x - end.x, y: cameraStart.current.y + start.y - end.y}
+    setCamera(newCamera)
+    cameraTarget.current = newCamera
+  }
+  function handleMouseUp(){
+    mouseDown.current = false
+  }
+  function renderedToCoordinate(point : {x : number, y : number}){
+    return {
+      x: (point.x - stageDimensions.w/2)/zoom + camera.x,
+      y: (point.y - stageDimensions.h/2)/zoom + camera.y
+    }
+  }
 
   useEffect(()=>{
     if(selectedSong.id !== ""){
@@ -396,6 +430,7 @@ function Vinyls(){
         }
       }).then(
         (response : Record<string, any>) => {
+          
           
           const tracks : Record<string, Song> = {}
           response.data.tracks.forEach((track : Record<string, any>)=>{
@@ -441,9 +476,11 @@ function Vinyls(){
             //updatedDisks[selectedSong.id].movementDamp = 1
 
             function getRandomDisk(spread : number, id : string){
+              const spreadX = (Math.random()-0.5)*2 * spread //Radius of spread
+              const spreadY = Math.sqrt(spread*spread-spreadX*spreadX)
               return {
-                x : updatedDisks[selectedSong.id].x + (Math.random()-0.5) * spread, 
-                y : updatedDisks[selectedSong.id].y + (Math.random()-0.5) * spread, 
+                x : updatedDisks[selectedSong.id].x + spreadX, 
+                y : updatedDisks[selectedSong.id].y + (Math.random() > 0.5 ? spreadY : -spreadY), 
                 image : Math.floor(Math.random()*images.length),
                 velocity : {x : 0, y : 0}, 
                 acceleration : {x : 0, y : 0}, 
@@ -456,10 +493,10 @@ function Vinyls(){
 
             for(const neighbour of neighbours){
               if(!updatedDisks[neighbour.songa]){
-                updatedDisks[neighbour.songa] = getRandomDisk(300, neighbour.songa)
+                updatedDisks[neighbour.songa] = getRandomDisk(150, neighbour.songa)
               }
               if(!updatedDisks[neighbour.songb]){
-                updatedDisks[neighbour.songb] = getRandomDisk(300, neighbour.songb)
+                updatedDisks[neighbour.songb] = getRandomDisk(150, neighbour.songb)
               }
               if(!correlations.current[`${neighbour.songa}${neighbour.songb}`]){
                 correlations.current[`${neighbour.songa}${neighbour.songb}`] = neighbour.count
@@ -490,6 +527,8 @@ function Vinyls(){
   }, []);
 
   useEffect(()=>{
+    cameraLocked.current = true
+
     function animate(){
       //Potentially expensive, look into optimizations
       setRotation(prev => prev + 2.5)
@@ -498,11 +537,13 @@ function Vinyls(){
         const distanceDivisor = 10
         return {x : prev.x + (cameraTarget.current.x-prev.x)/distanceDivisor , y : prev.y + (cameraTarget.current.y-prev.y)/distanceDivisor }
       })
-
-
+      setZoom(prev => {
+        const zoomDivisor = 10
+        return prev + (zoomTarget.current-prev)/zoomDivisor
+      })
       
       setDiscs(prev => {
-        if(prev[selectedSong.id]){
+        if(prev[selectedSong.id] && cameraLocked.current){
           cameraTarget.current = {x : prev[selectedSong.id].x , y : prev[selectedSong.id].y}
         }
 
@@ -525,7 +566,7 @@ function Vinyls(){
               disc.size = 1
             }
           }
-
+          
           if(disc.movementDamp > 0){
             disc.movementDamp -= 0.0005
           }else{
@@ -597,123 +638,120 @@ function Vinyls(){
 
     return ()=>{cancelAnimationFrame(animationRef.current)}
   }, [selectedSong])
-
+  
   function getRenderedX(x : number){
-    return (x - camera.x)/zoom + stageDimensions.w/2 
+    return (x - camera.x)*zoom + stageDimensions.w/2 
   }
   function getRenderedY(y : number){
-    return (y - camera.y)/zoom + stageDimensions.h/2 
+    return (y - camera.y)*zoom + stageDimensions.h/2 
   }
   const DISC_SIZE = 100
-  function onScroll(e : WheelEvent){
-    if(e.deltaY < 0){
-      setZoom(prev => {
-        return prev-e.deltaY*0.01
-      })
-    }else{
-      setZoom(prev => prev-e.deltaY*0.01)
-    }
-  }
+  
+  const ZOOM_MAX = 1.5
+  const ZOOM_MIN = 0.3
 
-  useEffect(()=>{
-    window.addEventListener('wheel', onScroll)
-    return ()=>{window.removeEventListener('wheel', onScroll)}
-  },[])
-
-  return (
-    <div className="flex justify-center items-center absolute top-0 left-0 w-screen h-screen">
-      {Object.values(discs).length !== 0 &&
-       <Stage width={stageDimensions.w} height={stageDimensions.h}>
-        <Layer>
-        {
-          Object.keys(correlations.current).map((id, index) => {
-            const songA = id.slice(0, 22)
-            const songB = id.slice(22)
-
-
-            return <Line
-              key={index}
-              points={[
-                getRenderedX(discs[songA].x), 
-                getRenderedY(discs[songA].y), 
-                getRenderedX(discs[songB].x), 
-                getRenderedY(discs[songB].y)
-              ]} // (x1, y1, x2, y2)
-              stroke="#f3f4f6"
-              strokeWidth={4/zoom}
-              lineCap="round"
-              lineJoin="round"
-              opacity={Math.min(discs[songA].opacity, discs[songB].opacity)}
-            ></Line>
-          })
-        }
-        {
-          Object.entries(discs).map(([id, disc], index) => {
-            return (<Group key={index}>
-              <Image
-                
-                image={images[disc.image]}
-                x={getRenderedX(disc.x)}           
-                y={getRenderedY(disc.y)}     
-                opacity={disc.opacity}
-
-                width={DISC_SIZE*disc.size/zoom} 
-                height={DISC_SIZE*disc.size/zoom}  
-                offsetX={(DISC_SIZE/2)*disc.size/zoom} // Center x-axis
-                offsetY={(DISC_SIZE/2)*disc.size/zoom} // Center y-axis
-                rotation={rotation}
-                shadowColor="black"
-                shadowBlur={10}
-                shadowOpacity={0.3}
-                shadowOffsetX={5/zoom}
-                shadowOffsetY={5/zoom}
-                onMouseEnter={()=>{focusedDisks.current.add(id)}}
-                onMouseLeave={()=>{if(id!==selectedSong.id)focusedDisks.current.delete(id)}}
-                onClick={()=>{setSelectedSong(disc.song)}}
-              />
-              <Text
-                text={disc.song.name}
-                
-                x={getRenderedX(disc.x)}           
-                y={getRenderedY(disc.y) + ((DISC_SIZE/2)*disc.size + 10)/zoom}     
-                fontSize={16/zoom}
-                fontFamily="Noto Serif"
-                ellipsis={true}
-                width={200/zoom}
-                wrap="none"
-                
-              ></Text>
-
-              <Text
-                text={disc.song.author}
-                
-                x={getRenderedX(disc.x)}           
-                y={getRenderedY(disc.y) + ((DISC_SIZE/2)*disc.size + 10 + 16 + 10)/zoom}   //Font size and padding  
-                fontSize={12/zoom}
-                fontFamily="Noto Serif"
-                ellipsis={true}
-                width={200/zoom}
-                wrap="none"
-                fill="#6B7280"
-              ></Text>
-            </Group>)  
-            
-            
-          })
-        }
-        {
-
-        }
-        </Layer>
-      </Stage>}
-      {selectedSong.id === "" && <div>
-        <h1 className="text-lg text-gray-400 text-center">Search for a song using the search bar below!</h1>
+  const discsAvailable = Object.values(discs).length !== 0 
+  return ( 
+    <>
+      {discsAvailable && <div className="absolute w-screen h-screen flex flex-col items-start justify-center top-0 left-0 p-16">
+        <button className={`z-10 bg-white transition-color duration-300 border-2 p-2 w-12 h-12 font-bold rounded-md ${zoom < ZOOM_MAX ? "text-gray-500 cursor-pointer  hover:border-[#887880]" : "text-gray-300 cursor-not-allowed"}  `} onClick={()=>{if(zoomTarget.current < ZOOM_MAX) zoomTarget.current+=0.2}}>+</button>
+        <button className={`z-10 bg-white transition-color duration-300 border-2 p-2 w-12 h-12 font-bold rounded-md ${zoom > ZOOM_MIN ? "text-gray-500 cursor-pointer  hover:border-[#887880]" : "text-gray-300 cursor-not-allowed"}  `} onClick={()=>{if(zoomTarget.current > ZOOM_MIN) zoomTarget.current-=0.2}}>-</button>
       </div>}
-      {Object.values(discs).length === 0 && selectedSong.id !== "" && <div>
-        <h1 className="text-2xl text-gray-400 text-center">We're in uncharted waters here...</h1>
-        <h2 className="text-gray-400 text-center ">Contribute to add this song!</h2>
-      </div>}
-    </div>
+      <div className={`flex justify-center items-center absolute top-0 left-0 w-screen h-screen`} onMouseDown={handleMouseDown} onMouseUp={handleMouseUp} onMouseMove={handleMouseMove}>
+        
+        {discsAvailable &&
+        <Stage width={stageDimensions.w} height={stageDimensions.h} >
+          <Layer>
+          {
+            Object.keys(correlations.current).map((id, index) => {
+              const songA = id.slice(0, 22)
+              const songB = id.slice(22)
+
+
+              return <Line
+                key={index}
+                points={[
+                  getRenderedX(discs[songA].x), 
+                  getRenderedY(discs[songA].y), 
+                  getRenderedX(discs[songB].x), 
+                  getRenderedY(discs[songB].y)
+                ]} // (x1, y1, x2, y2)
+                stroke={"#f3f4f6"}
+                strokeWidth={focusedDisks.current.has(songA) || focusedDisks.current.has(songB) ? 4*zoom : 4*zoom} //Style based on focus?
+                lineCap="round"
+                lineJoin="round"
+                opacity={Math.min(discs[songA].opacity, discs[songB].opacity)}
+              ></Line>
+            })
+          }
+          {
+            Object.entries(discs).map(([id, disc], index) => {
+              return (<Group key={index}>
+                <Image
+                  
+                  image={images[disc.image]}
+                  x={getRenderedX(disc.x)}           
+                  y={getRenderedY(disc.y)}     
+                  opacity={disc.opacity}
+
+                  width={DISC_SIZE*disc.size*zoom} 
+                  height={DISC_SIZE*disc.size*zoom}  
+                  offsetX={(DISC_SIZE/2)*disc.size*zoom} // Center x-axis
+                  offsetY={(DISC_SIZE/2)*disc.size*zoom} // Center y-axis
+                  rotation={rotation}
+                  shadowColor="black"
+                  shadowBlur={10}
+                  shadowOpacity={0.3}
+                  shadowOffsetX={5*zoom}
+                  shadowOffsetY={5*zoom}
+                  onMouseEnter={()=>{focusedDisks.current.add(id)}}
+                  onMouseLeave={()=>{if(id!==selectedSong.id)focusedDisks.current.delete(id)}}
+                  onClick={()=>{setSelectedSong(disc.song)}}
+                />
+                <Text
+                  text={disc.song.name}
+                  
+                  x={getRenderedX(disc.x)}           
+                  y={getRenderedY(disc.y) + ((DISC_SIZE/2)*disc.size + 10)*zoom}     
+                  fontSize={16*zoom}
+                  fontFamily="Noto Serif"
+                  ellipsis={true}
+                  width={200*zoom}
+                  wrap="none"
+                  
+                ></Text>
+
+                <Text
+                  text={disc.song.author}
+                  
+                  x={getRenderedX(disc.x)}           
+                  y={getRenderedY(disc.y) + ((DISC_SIZE/2)*disc.size + 10 + 16 + 10)*zoom}   //Font size and padding  
+                  fontSize={12*zoom}
+                  fontFamily="Noto Serif"
+                  ellipsis={true}
+                  width={200*zoom}
+                  wrap="none"
+                  fill="#6B7280"
+                ></Text>
+              </Group>)  
+              
+              
+            })
+          }
+          {
+
+          }
+          </Layer>
+        </Stage>}
+        {selectedSong.id === "" && <div>
+          <h1 className="text-lg text-gray-400 text-center">Search for a song using the search bar below!</h1>
+        </div>}
+        {Object.values(discs).length === 0 && selectedSong.id !== "" && <div>
+          <h1 className="text-2xl text-gray-400 text-center">We're in uncharted waters here...</h1>
+          <h2 className="text-gray-400 text-center ">Contribute to add this song!</h2>
+        </div>}
+      </div>
+    </>
   )
 }
 
