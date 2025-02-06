@@ -22,15 +22,15 @@ OVERALL SUMMARY
 
 -Improve generation to not cause two things to shoot away (or set a cap on velocity / collision detection) DONE
 -Scroll to change scale of canvas? Drag to move camera? DONE 
--Make Vinyls fade if close to 0, 0 
+-Make Vinyls fade if close to 0, 0 DONE 
 -Volume button
--Further improve simulation (with collision  + mix blend move?) 
+-Further improve simulation (with collision  + mix blend move?) DONE?
 
 -Bug - panyolo color not going through <----- 3
     -Unrelated bug: seems to try to play it twice at the start of a queued song
     -Sometimes you click and it doubles back? DON'T QUEUE REQUESTS IF ONE ALREADY EXISTS
-    -Other requests should probably also lock interactions
--Error handling + logged out message <----- 4
+    -Other requests should probably also lock interactions 
+-Error handling + logged out message <----- 4 
 -Highlight 5 correlations DONE 
 
 -Embeddings + vector database (AWS hosting) <----- 5

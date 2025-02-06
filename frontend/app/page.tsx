@@ -9,7 +9,7 @@ import useImage from 'use-image';
 //https://coolors.co/8a4f7d-887880-88a096-bbab8b-ef8275
 
 const SongContext = createContext({value : {name : "", author : "", album : "", id : ""}, setValue : (val : Song | ((song: Song) => Song))=>{}})
-const PlayerContext = createContext({value: false, setValue : (prev : boolean) => {}})
+const PlayerContext = createContext({value: false, setValue : (prev : boolean) => {}, maxWidth : 0, setMaxWidth : (prev : number) => {}})
 
 type Song = {name : string, author : string, album : string, id : string}
 
@@ -224,11 +224,18 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
   const [deviceId, setDeviceId] = useState("")
   const [coordinates, setCoordinates] = useState({x: 0, y: 0})
   const setPlayer = useContext(PlayerContext).setValue
+  const setMaxWidth = useContext(PlayerContext).setMaxWidth
 
   const animationRef = useRef(0)
   const actualCoordinates = useRef({x: 0, y: 0})
+  const nameRef = useRef<HTMLHeadingElement>(null)
+  const authorRef = useRef<HTMLHeadingElement>(null)
 
   useEffect(()=>{
+    if(nameRef.current && authorRef.current){
+      setMaxWidth(Math.min(Math.max(nameRef.current.clientWidth, authorRef.current.clientWidth), 600))
+    }
+
     actualCoordinates.current = {x: 180*Math.random()-90, y: 360*Math.random()-90}
     function roundToDecimalPlaces(num : number, decimals : number) {
       let factor = Math.pow(10, decimals)
@@ -346,10 +353,10 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
         <div className="w-full">
             
             <Marquee marqueeWidth={600} height={62} edgeWidth={48} endPause={120} selectedSong={selectedSong}>
-              <h1 className="text-5xl w-min" >{selectedSong.name}</h1>
+              <h1 ref={nameRef} className="text-5xl w-min" >{selectedSong.name}</h1>
             </Marquee>
             <Marquee marqueeWidth={600} height={25} edgeWidth={48} endPause={120} selectedSong={selectedSong}>
-              <h2 >{`${selectedSong.author} - ${selectedSong.album}`}</h2>
+              <h2 ref={authorRef}>{`${selectedSong.author} - ${selectedSong.album}`}</h2>
             </Marquee>
 
             <h2 className="pt-2 text-gray-500">{`${coordinates.x}, ${coordinates.y}`}</h2>
@@ -366,6 +373,7 @@ type Correlation = {songa: string, songb: string, count: number}
 function Vinyls(){
   const selectedSong = useContext(SongContext).value
   const setSelectedSong = useContext(SongContext).setValue
+  const maxWidth = useContext(PlayerContext).maxWidth
 
   const [discs, setDiscs] = useState<Record<string, Disk>>({})
   const correlations = useRef<Record<string, number>>({})
@@ -525,6 +533,16 @@ function Vinyls(){
   }, []);
 
   useEffect(()=>{
+    for (const [id, disc] of Object.entries(discs)) {
+      if(getRenderedX(disc.x) < maxWidth + DISC_SIZE*1.5*zoom && getRenderedY(disc.y) < 120 + DISC_SIZE*1.5*zoom){
+        fadedDisks.current.add(id)
+      }else{
+        fadedDisks.current.delete(id)
+      }
+    }
+  }, [zoom, camera, maxWidth])
+
+  useEffect(()=>{
     cameraLocked.current = true
 
     function animate(){
@@ -576,10 +594,21 @@ function Vinyls(){
             disc.x += (disc.velocity.x + disc.acceleration.x/2)*disc.movementDamp 
             disc.y += (disc.velocity.y + disc.acceleration.y/2)*disc.movementDamp 
           }
-          if(disc.opacity < 1){
-            disc.opacity += 0.05
+
+          
+
+          if(!fadedDisks.current.has(id)){
+            if(disc.opacity < 1){
+              disc.opacity += 0.05
+            }else{
+              disc.opacity = 1
+            }
           }else{
-            disc.opacity = 1
+            if(disc.opacity > 0.1){
+              disc.opacity -= 0.05
+            }else{
+              disc.opacity = 0
+            }
           }
         }
         
@@ -726,7 +755,7 @@ function Vinyls(){
                   shadowOffsetY={5*zoom}
                   onMouseEnter={()=>{focusedDisks.current.add(id)}}
                   onMouseLeave={()=>{if(id!==selectedSong.id)focusedDisks.current.delete(id)}}
-                  onClick={()=>{setSelectedSong(disc.song)}}
+                  onClick={()=>{if(!fadedDisks.current.has(id))setSelectedSong(disc.song)}}
                 />
             })
           }
@@ -742,8 +771,10 @@ function Vinyls(){
                   fontSize={16*zoom}
                   fontFamily="Noto Serif"
                   ellipsis={true}
-                  width={175*zoom}
+                  width={150*zoom}
                   wrap="none"
+                  opacity={disc.opacity}
+
                 ></Text>
 
                 <Text
@@ -754,10 +785,10 @@ function Vinyls(){
                   fontSize={12*zoom}
                   fontFamily="Noto Serif"
                   ellipsis={true}
-                  width={175*zoom}
+                  width={150*zoom}
                   wrap="none"
                   fill="#6B7280"
-
+                  opacity={disc.opacity}
                 ></Text>
               </Group>)  
               
@@ -945,6 +976,7 @@ export default function App() {
   const [showHome, setShowHome] = useState(true)
   const [fadeIn, setFadeIn] = useState(false)
   const [player, setPlayer] = useState<any>() //Not sure what type this is
+  const [playerWidth, setPlayerWidth] = useState(0)
   const [loggedIn, setLoggedIn] = useState(false)
 
   useEffect(()=>{
@@ -967,7 +999,7 @@ export default function App() {
     setTimeout(()=>{setShowHome(false)}, 500)
   }
   return (
-    <PlayerContext.Provider value={{value: player, setValue: setPlayer}}>
+    <PlayerContext.Provider value={{value: player, setValue: setPlayer, maxWidth:playerWidth, setMaxWidth:setPlayerWidth}}>
       <div className="overflow-hidden">
         <div className={`duration-500 transition  ${fadeIn ? "-translate-y-[10%] opacity-0" : ""}`}>
           {showHome && <Home signInHandler={signIn
