@@ -22,16 +22,16 @@ OVERALL SUMMARY
 
 -Improve generation to not cause two things to shoot away (or set a cap on velocity / collision detection) DONE
 -Scroll to change scale of canvas? Drag to move camera? DONE 
--Make Vinyls fade if close to 0, 0 DONE?
+-Make Vinyls fade if close to 0, 0 
 -Volume button
--Further improve simulation
+-Further improve simulation (with collision  + mix blend move?) 
 
 -Bug - panyolo color not going through <----- 3
     -Unrelated bug: seems to try to play it twice at the start of a queued song
     -Sometimes you click and it doubles back? DON'T QUEUE REQUESTS IF ONE ALREADY EXISTS
     -Other requests should probably also lock interactions
 -Error handling + logged out message <----- 4
-
+-Highlight 5 correlations DONE 
 
 -Embeddings + vector database (AWS hosting) <----- 5
     -Store in vector db 
@@ -39,8 +39,8 @@ OVERALL SUMMARY
     -Make numbers mean something?
     -Hometown / constellation 
 EXTRA: sync up with others? maybe the discs should always spawn in the same place
--Highlight 5 correlations
 -Reset decay so that you can drag discs?
+-Shortest path?
 
 Contribute
 -Show search bar when button is clicked DONE

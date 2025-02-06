@@ -370,6 +370,7 @@ function Vinyls(){
   const [discs, setDiscs] = useState<Record<string, Disk>>({})
   const correlations = useRef<Record<string, number>>({})
   const focusedDisks = useRef<Set<string>>(new Set())
+  const fadedDisks = useRef<Set<string>>(new Set())
   
   const [stageDimensions, setStageDimensions] = useState({w: window.innerWidth, h : window.innerHeight})
   const animationRef = useRef(0)
@@ -378,9 +379,6 @@ function Vinyls(){
   const [zoom, setZoom] = useState(1)
   const cameraTarget = useRef({x : 0, y : 0})
   const zoomTarget = useRef(1)
-
- 
-  
 
   const imagePaths = ['/vinyl1.svg', '/vinyl2.svg', '/vinyl3.svg', '/vinyl4.svg', '/vinyl5.svg'];
   const images = imagePaths.map(path => {
@@ -543,6 +541,7 @@ function Vinyls(){
       })
       
       setDiscs(prev => {
+        
         if(prev[selectedSong.id] && cameraLocked.current){
           cameraTarget.current = {x : prev[selectedSong.id].x , y : prev[selectedSong.id].y}
         }
@@ -589,13 +588,35 @@ function Vinyls(){
           //Coulomb's law
           const discA = updatedDiscs[combo[0]]
           const discB = updatedDiscs[combo[1]]
-          const distanceAndAngle = getDistanceAndAngle(discA.x, discA.y, discB.x, discB.y)
+          var distanceAndAngle = getDistanceAndAngle(discA.x, discA.y, discB.x, discB.y)
+
+          const minDistance = 200
+          if(distanceAndAngle.distance < minDistance){
+            const difference = getXYDifference(minDistance-distanceAndAngle.distance, distanceAndAngle.angle)
+            discA.x -= difference.dx/2
+            discA.y -= difference.dy/2
+            discB.x += difference.dx/2
+            discB.y += difference.dy/2
+            /*if(discA.movementDamp === discB.movementDamp){
+              
+            }else if(discA.movementDamp > discB.movementDamp){
+              //discA.movementDamp += 0.0005
+              discA.x -= difference.dx
+              discA.y -= difference.dy
+            }else{
+              //discB.movementDamp =
+              discB.x += difference.dx
+              discB.y += difference.dy
+            }*/
+            distanceAndAngle = getDistanceAndAngle(discA.x, discA.y, discB.x, discB.y)
+          }
+
           var force = 20/(distanceAndAngle.distance*distanceAndAngle.distance)
           if(distanceAndAngle.distance === 0){ //Prevent infinite force
             force = 1
           }
 
-          //Coulomb's law
+          //Coulomb's law + collision detection
           const newAccelerationA = {x : 0, y : 0}
           const newAccelerationB = {x : 0, y : 0}
           var change = getXYDifference(force, distanceAndAngle.angle)
@@ -686,9 +707,8 @@ function Vinyls(){
           }
           {
             Object.entries(discs).map(([id, disc], index) => {
-              return (<Group key={index}>
-                <Image
-                  
+              return <Image
+                  key={index}
                   image={images[disc.image]}
                   x={getRenderedX(disc.x)}           
                   y={getRenderedY(disc.y)}     
@@ -708,6 +728,12 @@ function Vinyls(){
                   onMouseLeave={()=>{if(id!==selectedSong.id)focusedDisks.current.delete(id)}}
                   onClick={()=>{setSelectedSong(disc.song)}}
                 />
+            })
+          }
+          {
+            Object.entries(discs).map(([id, disc], index) => {
+              return (<Group key={index} 
+>
                 <Text
                   text={disc.song.name}
                   
@@ -716,9 +742,8 @@ function Vinyls(){
                   fontSize={16*zoom}
                   fontFamily="Noto Serif"
                   ellipsis={true}
-                  width={200*zoom}
+                  width={175*zoom}
                   wrap="none"
-                  
                 ></Text>
 
                 <Text
@@ -729,9 +754,10 @@ function Vinyls(){
                   fontSize={12*zoom}
                   fontFamily="Noto Serif"
                   ellipsis={true}
-                  width={200*zoom}
+                  width={175*zoom}
                   wrap="none"
                   fill="#6B7280"
+
                 ></Text>
               </Group>)  
               
