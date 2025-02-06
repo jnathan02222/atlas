@@ -4,12 +4,14 @@ import axios from "axios"
 import { SyncLoader } from 'react-spinners'
 import { Stage, Layer, Image, Line, Text, Group } from 'react-konva';
 import useImage from 'use-image';
+import { Play } from "next/font/google";
+import Slider from '@mui/material/Slider';
 
 //https://coolors.co/cb3342-686963-8aa29e-3d5467-f1edee
 //https://coolors.co/8a4f7d-887880-88a096-bbab8b-ef8275
 
 const SongContext = createContext({value : {name : "", author : "", album : "", id : ""}, setValue : (val : Song | ((song: Song) => Song))=>{}})
-const PlayerContext = createContext({value: false, setValue : (prev : boolean) => {}, maxWidth : 0, setMaxWidth : (prev : number) => {}})
+const PlayerContext = createContext({value: null, setValue : (prev : boolean) => {}, maxWidth : 0, setMaxWidth : (prev : number) => {}})
 
 type Song = {name : string, author : string, album : string, id : string}
 
@@ -946,6 +948,8 @@ function Contribute(){
 
 function Map({handleLogout} : {handleLogout : ()=>void}){
   const [selectedSong, setSelectedSong] = useState<Song>({name : "", author : "", album : "", id : ""})    
+  const [playerVolume, setPlayerVolume] = useState(50)
+  const player : any = useContext(PlayerContext).value 
   
   return (
     <SongContext.Provider value={{value : selectedSong, setValue : setSelectedSong}}>
@@ -960,7 +964,43 @@ function Map({handleLogout} : {handleLogout : ()=>void}){
           <div className="flex gap-1 items-end">
             <Search></Search>
           </div>
-          <div className="flex gap-1"> 
+          <div className="flex gap-1 items-center"> 
+            <style>
+              {
+                `
+                
+                `
+              }
+            </style>
+            <Slider 
+              sx={{
+                width: 100, 
+                color: '#d1d5db',
+                '& .MuiSlider-thumb': {
+                  backgroundColor: '#d1d5db',  
+                  width: 16, 
+                  height: 16,
+                  
+                },
+                '& .MuiSlider-rail': {
+                  backgroundColor: '#d3d3d3',  
+                },
+                '& .MuiSlider-track': {
+                  backgroundColor: '#d3d3d3',  
+                },
+                '& .MuiSlider-thumb:hover': {
+                  boxShadow: '0 2px 6px rgba(107, 114, 128, 0.6)',
+                },
+                
+              }}
+
+              min={0} max={100} value={playerVolume} onChange={(e : Event, val : number | number[])=>{
+              const volumeVal = parseFloat(val)
+              player.setVolume(volumeVal/100).then(()=>{
+                setPlayerVolume(volumeVal)
+              })
+
+            }}></Slider>
             <Contribute></Contribute>
             <button className="z-10 bg-white transition-color duration-300 border-2 p-2 w-12 h-12 rounded-md text-gray-700 cursor-pointer hover:border-[#887880]">?</button>
 
