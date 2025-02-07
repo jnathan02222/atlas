@@ -4,14 +4,15 @@ import axios from "axios"
 import { SyncLoader } from 'react-spinners'
 import { Stage, Layer, Image, Line, Text, Group } from 'react-konva';
 import useImage from 'use-image';
-import { Play } from "next/font/google";
 import Slider from '@mui/material/Slider';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 
 //https://coolors.co/cb3342-686963-8aa29e-3d5467-f1edee
 //https://coolors.co/8a4f7d-887880-88a096-bbab8b-ef8275
 
 const SongContext = createContext({value : {name : "", author : "", album : "", id : ""}, setValue : (val : Song | ((song: Song) => Song))=>{}})
-const PlayerContext = createContext({value: null, setValue : (prev : boolean) => {}, maxWidth : 0, setMaxWidth : (prev : number) => {}})
+const PlayerContext = createContext({value: null, setValue : (prev : any) => {}, maxWidth : 0, setMaxWidth : (prev : number) => {}})
 
 type Song = {name : string, author : string, album : string, id : string}
 
@@ -319,6 +320,7 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
         
         player.addListener('ready', ({ device_id } : {device_id : string}) => {
             console.log('Ready with Device ID', device_id)
+            setPlayer(player)
             player.setVolume(0.5)
             setDeviceId(device_id)
         })
@@ -344,7 +346,6 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
 
         player.connect()
 
-        setPlayer(player)
       }
   }, [])
 
@@ -407,7 +408,7 @@ function Vinyls(){
     cameraLocked.current = false 
     cameraStart.current = camera
   }
-  function handleMouseMove(e :  React.MouseEvent<HTMLDivElement, MouseEvent>){
+  function handleMouseMove(e : MouseEvent){
     if(!mouseDown.current){
       return 
     }
@@ -427,6 +428,17 @@ function Vinyls(){
       y: (point.y - stageDimensions.h/2)/zoom + camera.y
     }
   }
+
+  useEffect(()=>{
+    window.addEventListener('mouseup', handleMouseUp)
+    window.addEventListener('mousemove', handleMouseMove)
+
+    return ()=>{
+      window.removeEventListener('mouseup', handleMouseUp)
+      window.removeEventListener('mousemove', handleMouseMove)
+
+    }
+  },[])
 
   useEffect(()=>{
     if(selectedSong.id !== ""){
@@ -481,7 +493,7 @@ function Vinyls(){
             }
             focusedDisks.current = new Set()
             focusedDisks.current.add(selectedSong.id)
-            //updatedDisks[selectedSong.id].movementDamp = 1
+            updatedDisks[selectedSong.id].movementDamp = 0.5
 
             function getRandomDisk(spread : number, id : string){
               const spreadX = (Math.random()-0.5)*2 * spread //Radius of spread
@@ -536,7 +548,7 @@ function Vinyls(){
 
   useEffect(()=>{
     for (const [id, disc] of Object.entries(discs)) {
-      if(getRenderedX(disc.x) < maxWidth + DISC_SIZE*1.5*zoom && getRenderedY(disc.y) < 120 + DISC_SIZE*1.5*zoom){
+      if(getRenderedX(disc.x) < maxWidth + 64 + DISC_SIZE/2*zoom && getRenderedY(disc.y) < 160 + DISC_SIZE/2*zoom){
         fadedDisks.current.add(id)
       }else{
         fadedDisks.current.delete(id)
@@ -609,7 +621,7 @@ function Vinyls(){
             if(disc.opacity > 0.1){
               disc.opacity -= 0.05
             }else{
-              disc.opacity = 0
+              disc.opacity = 0.1
             }
           }
         }
@@ -701,15 +713,73 @@ function Vinyls(){
   
   const ZOOM_MAX = 1.5
   const ZOOM_MIN = 0.3
+  
+  /*const keyPressed = useRef(false)
+  function handleKeyDown(e : KeyboardEvent){
+    if(!keyPressed.current){
+
+    }
+    keyPressed.current = true 
+  }
+  useEffect(()=>{
+    window.addEventListener('keydown', handleKeyDown)
+    return ()=>{window.removeEventListener('keydown', handleKeyDown)}
+  },[])*/
+
 
   const discsAvailable = Object.values(discs).length !== 0 
   return ( 
     <>
-      {discsAvailable && <div className="absolute w-screen h-screen flex flex-col items-start justify-center top-0 left-0 p-16">
-        <button className={`z-10 bg-white transition-color duration-300 border-2 p-2 w-12 h-12 font-bold rounded-md ${zoom < ZOOM_MAX ? "text-gray-500 cursor-pointer  hover:border-[#887880]" : "text-gray-300 cursor-not-allowed"}  `} onClick={()=>{if(zoomTarget.current < ZOOM_MAX) zoomTarget.current+=0.2}}>+</button>
-        <button className={`z-10 bg-white transition-color duration-300 border-2 p-2 w-12 h-12 font-bold rounded-md ${zoom > ZOOM_MIN ? "text-gray-500 cursor-pointer  hover:border-[#887880]" : "text-gray-300 cursor-not-allowed"}  `} onClick={()=>{if(zoomTarget.current > ZOOM_MIN) zoomTarget.current-=0.2}}>-</button>
-      </div>}
-      <div className={`flex justify-center items-center absolute top-0 left-0 w-screen h-screen`} onMouseDown={handleMouseDown} onMouseUp={handleMouseUp} onMouseMove={handleMouseMove}>
+      {/*discsAvailable && <div className="absolute w-screen h-screen flex flex-col items-start justify-center top-0 left-0 p-16">
+        <button style={{width: 20, height: 20}} className={`z-10 bg-white transition-color duration-300 border-2 p-2 font-bold rounded-md ${zoom < ZOOM_MAX ? "text-gray-500 cursor-pointer  hover:border-[#887880]" : "text-gray-300 cursor-not-allowed"}  `} onClick={()=>{if(zoomTarget.current < ZOOM_MAX) zoomTarget.current+=0.2}}>
+        
+        </button>
+        <button style={{width: 20, height: 20}} className={`z-10 bg-white transition-color duration-300 border-2 p-2 font-bold rounded-md ${zoom > ZOOM_MIN ? "text-gray-500 cursor-pointer  hover:border-[#887880]" : "text-gray-300 cursor-not-allowed"}  `} onClick={()=>{if(zoomTarget.current > ZOOM_MIN) zoomTarget.current-=0.2}}>
+
+        </button>
+      </div>*/
+
+      discsAvailable && <div className="absolute w-screen h-screen flex flex-col items-end justify-center top-0 left-0 p-16">
+        <div className="z-10 flex flex-col justify-center">
+          <p className="text-center">+</p>
+          <Slider 
+          step={0.2}
+          orientation="vertical"
+          sx={{
+            height: 100, 
+            color: '#d1d5db',
+            '& .MuiSlider-thumb': {
+              backgroundColor: '#d1d5db',  
+              width: 16, 
+              height: 16,
+              
+            },
+            '& .MuiSlider-rail': {
+              backgroundColor: '#d3d3d3',  
+            },
+            '& .MuiSlider-track': {
+              backgroundColor: '#d3d3d3',  
+            },
+            '& .MuiSlider-thumb:hover': {
+              boxShadow: '0 2px 6px rgba(107, 114, 128, 0.6)',
+            },
+            
+          }}
+
+          min={ZOOM_MIN} max={ZOOM_MAX} value={zoom} onChange={(e : Event, val : number | number[])=>{
+            if(Array.isArray(val)){
+              return
+            }
+            zoomTarget.current = val
+            setZoom(val)
+          }}>
+
+        </Slider>
+        <p className="text-center">-</p>
+        </div>
+      </div>
+      }
+      <div className={`flex justify-center items-center absolute top-0 left-0 w-screen h-screen`} onMouseDown={handleMouseDown}>
         
         {discsAvailable &&
         <Stage width={stageDimensions.w} height={stageDimensions.h} >
@@ -949,8 +1019,9 @@ function Contribute(){
 function Map({handleLogout} : {handleLogout : ()=>void}){
   const [selectedSong, setSelectedSong] = useState<Song>({name : "", author : "", album : "", id : ""})    
   const [playerVolume, setPlayerVolume] = useState(50)
+  const [savedPlayerVolume, setSavedPlayerVolume] = useState(50)
   const player : any = useContext(PlayerContext).value 
-  
+
   return (
     <SongContext.Provider value={{value : selectedSong, setValue : setSelectedSong}}>
       <div className="w-screen h-screen flex flex-col justify-between p-16">
@@ -965,42 +1036,68 @@ function Map({handleLogout} : {handleLogout : ()=>void}){
             <Search></Search>
           </div>
           <div className="flex gap-1 items-center"> 
-            <style>
+            {<div className={` duration-500 transition flex items-center gap-2 ${player ? "" : "opacity-0"}`}> 
               {
-                `
-                
-                `
-              }
-            </style>
-            <Slider 
-              sx={{
-                width: 100, 
-                color: '#d1d5db',
-                '& .MuiSlider-thumb': {
-                  backgroundColor: '#d1d5db',  
-                  width: 16, 
-                  height: 16,
+                player &&
+                (playerVolume > 0 ? 
+                <button className="cursor-pointer z-10" onClick={()=>{
+                  player.setVolume(0).then(()=>{
+                    setPlayerVolume(0)
+                  })
+                }}>
+                  <VolumeUpIcon sx={{color: '#9CA3AF'}}></VolumeUpIcon>     
+                </button>
+                :
+                <button className="cursor-pointer z-10" onClick={()=>{
+                  player.setVolume(savedPlayerVolume/100).then(()=>{
+                    setPlayerVolume(savedPlayerVolume)
+                  })
+                }}>
+                  <VolumeOffIcon sx={{color: '#9CA3AF'}}></VolumeOffIcon>     
+                </button>)
+              }        
+              {
+                player &&
+                <Slider 
+                sx={{
+                  width: 100, 
+                  color: '#d1d5db',
+                  '& .MuiSlider-thumb': {
+                    backgroundColor: '#d1d5db',  
+                    width: 16, 
+                    height: 16,
+                    
+                  },
+                  '& .MuiSlider-rail': {
+                    backgroundColor: '#d3d3d3',  
+                  },
+                  '& .MuiSlider-track': {
+                    backgroundColor: '#d3d3d3',  
+                  },
+                  '& .MuiSlider-thumb:hover': {
+                    boxShadow: '0 2px 6px rgba(107, 114, 128, 0.6)',
+                  },
                   
-                },
-                '& .MuiSlider-rail': {
-                  backgroundColor: '#d3d3d3',  
-                },
-                '& .MuiSlider-track': {
-                  backgroundColor: '#d3d3d3',  
-                },
-                '& .MuiSlider-thumb:hover': {
-                  boxShadow: '0 2px 6px rgba(107, 114, 128, 0.6)',
-                },
-                
-              }}
+                }}
 
-              min={0} max={100} value={playerVolume} onChange={(e : Event, val : number | number[])=>{
-              const volumeVal = parseFloat(val)
-              player.setVolume(volumeVal/100).then(()=>{
-                setPlayerVolume(volumeVal)
-              })
+                min={0} max={100} value={playerVolume} onChange={(e : Event, val : number | number[])=>{
+                if(Array.isArray(val)){
+                  return
+                }
+                const volumeVal = val
+                player.setVolume(volumeVal/100).then(()=>{
+                  setPlayerVolume(volumeVal)
+                  if(volumeVal > 0){
+                    setSavedPlayerVolume(volumeVal)
+                  }else{
+                    setSavedPlayerVolume(50)
+                  }
+                })
 
-            }}></Slider>
+              }}></Slider>}
+              </div>
+              }
+              
             <Contribute></Contribute>
             <button className="z-10 bg-white transition-color duration-300 border-2 p-2 w-12 h-12 rounded-md text-gray-700 cursor-pointer hover:border-[#887880]">?</button>
 
@@ -1041,8 +1138,8 @@ export default function App() {
   return (
     <PlayerContext.Provider value={{value: player, setValue: setPlayer, maxWidth:playerWidth, setMaxWidth:setPlayerWidth}}>
       <div className="overflow-hidden">
-        <div className={`duration-500 transition  ${fadeIn ? "-translate-y-[10%] opacity-0" : ""}`}>
-          {showHome && <Home signInHandler={signIn
+        <div className={`duration-500 transition  ${fadeIn ? "-translate-y-[10%] opacity-0" : ""} ${showHome ? "" : "display-none"}`}>
+          {<Home signInHandler={signIn
             }></Home>}  
         </div>
         <div className={`overflow-hidden absolute top-0 duration-500 transition  ${fadeIn ? "" : "opacity-0 -translate-y-[10%]"}`}>
@@ -1051,7 +1148,8 @@ export default function App() {
             setShowHome(true)
             //setTimeout(()=>{setShowMap(false)}, 500)
             setShowMap(false) //Instantly, otherwise looks dumb
-            player.disconnect()
+            if(player) player.disconnect()
+            setPlayer(null)
 
             document.cookie = `spotify_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`
 

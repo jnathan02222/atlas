@@ -23,15 +23,18 @@ OVERALL SUMMARY
 -Improve generation to not cause two things to shoot away (or set a cap on velocity / collision detection) DONE
 -Scroll to change scale of canvas? Drag to move camera? DONE 
 -Make Vinyls fade if close to 0, 0 DONE 
--Volume button
+-Volume button DONE
 -Further improve simulation (with collision  + mix blend move?) DONE?
 
+LOG elastics? Use Manjeet's code
 -Bug - panyolo color not going through <----- 3
     -Unrelated bug: seems to try to play it twice at the start of a queued song
     -Sometimes you click and it doubles back? DON'T QUEUE REQUESTS IF ONE ALREADY EXISTS
     -Other requests should probably also lock interactions 
 -Error handling + logged out message <----- 4 
 -Highlight 5 correlations DONE 
+-Preload images
+-Something wrong with fading DONE
 
 -Embeddings + vector database (AWS hosting) <----- 5
     -Store in vector db 
@@ -101,6 +104,8 @@ website
 stars
 maps
 
-jams should work in theory 
 must use computer
 must have email ready
+so it's a map (with embeddings summary?)
+contribution
+jams should work in theory 
