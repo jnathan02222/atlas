@@ -11,7 +11,7 @@ const mutex = new Mutex();
 const axios = require('axios')
 const pgp = require('pg-promise')()
 const db = pgp({
-  host: 'localhost',        
+  host: process.env.DB_HOST,        
   port: 5432,               
   database: 'music_db',         
   user: 'postgres',           
@@ -21,7 +21,7 @@ const db = pgp({
 const OpenAI = require('openai')
 const openai = new OpenAI()
 
-var redirect_uri = "http://localhost:8888/api/callback" //Also change
+var redirect_uri = process.env.SPOTIFY_REDIRECT_URI //Also change
 var client_id = '0626b416c6164a5599c9c2c4af16d0b7'
 var client_secret = process.env.SPOTIFY_CLIENT_SECRET 
 var spotify_token = ""

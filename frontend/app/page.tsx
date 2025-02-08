@@ -424,8 +424,8 @@ function Vinyls(){
   }
   function renderedToCoordinate(point : {x : number, y : number}){
     return {
-      x: (point.x - stageDimensions.w/2)/zoom + camera.x,
-      y: (point.y - stageDimensions.h/2)/zoom + camera.y
+      x: (point.x - stageDimensions.w/2)/zoom,
+      y: (point.y - stageDimensions.h/2)/zoom 
     }
   }
 
@@ -438,7 +438,7 @@ function Vinyls(){
       window.removeEventListener('mousemove', handleMouseMove)
 
     }
-  },[])
+  },[zoom])
 
   useEffect(()=>{
     if(selectedSong.id !== ""){
@@ -493,8 +493,9 @@ function Vinyls(){
             }
             focusedDisks.current = new Set()
             focusedDisks.current.add(selectedSong.id)
-            updatedDisks[selectedSong.id].movementDamp = 0.5
-
+            if(updatedDisks[selectedSong.id]){
+              updatedDisks[selectedSong.id].movementDamp = 0.5
+            }
             function getRandomDisk(spread : number, id : string){
               const spreadX = (Math.random()-0.5)*2 * spread //Radius of spread
               const spreadY = Math.sqrt(spread*spread-spreadX*spreadX)
@@ -841,7 +842,7 @@ function Vinyls(){
                   x={getRenderedX(disc.x)}           
                   y={getRenderedY(disc.y) + ((DISC_SIZE/2)*disc.size + 10)*zoom}     
                   fontSize={16*zoom}
-                  fontFamily="Noto Serif"
+                  fontFamily="Noto Serif, Noto Sans JP, Noto Sans KR, Noto Sans TC"
                   ellipsis={true}
                   width={150*zoom}
                   wrap="none"
@@ -855,7 +856,7 @@ function Vinyls(){
                   x={getRenderedX(disc.x)}           
                   y={getRenderedY(disc.y) + ((DISC_SIZE/2)*disc.size + 10 + 16 + 10)*zoom}   //Font size and padding  
                   fontSize={12*zoom}
-                  fontFamily="Noto Serif"
+                  fontFamily="Noto Serif, Noto Sans JP, Noto Sans KR, Noto Sans TC"
                   ellipsis={true}
                   width={150*zoom}
                   wrap="none"
