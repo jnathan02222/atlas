@@ -302,7 +302,7 @@ app.get('/api/callback', (req, res) => {
     }).then(
       (response) => {
         res.cookie('spotify_token', response.data.access_token);
-        res.redirect(redirect_uri)
+        res.redirect(process.env.WEBSITE_URL)
       }
     ).catch(
       (error)=> {
