@@ -16,7 +16,7 @@ const db = pgp({
   database: 'music_db',         
   user: 'postgres',           
   password: process.env.DB_PASSWORD,   
-  ssl: true
+  ssl: { rejectUnauthorized: false }
 })
 
 const OpenAI = require('openai')
