@@ -152,7 +152,7 @@ function Home({signInHandler} : {signInHandler : ()=> void}){
         <div className="rounded-full bg-white border-4	border-[#EF8275] w-[2%] aspect-square absolute"></div>
       </div>
       <div className="flex flex-col items-start absolute ml-[60%]">
-        <img src="/Full_Logo_black_RGB.svg" draggable="false" className="h-6"></img>
+        <img src="/Full_Logo_Black_RGB.svg" draggable="false" className="h-6"></img>
         <h1 className="text-black text-8xl">Atlas</h1>
         <div className="flex">
           <a href="/api/login" className="transition-color duration-300 hover:border-[#887880] border-2 p-2 mt-2 rounded-md text-gray-700  cursor-pointer" >Sign In</a>
