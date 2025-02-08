@@ -5,7 +5,7 @@ CREATE TABLE names (songA VARCHAR(22), songB VARCHAR(22), playlist VARCHAR(22), 
 CREATE TABLE correlations (songA VARCHAR(22), songB VARCHAR(22), count INT, PRIMARY KEY (songA, songB));
 
 Create a new instance and give it an elastic IP 
-Install Nginx (setup proxies) and get ssl certificate 
+Install Nginx (setup proxies) and get ssl certificate (make sure you got a domain to point to the ip)
 Install pm2 and get files from git (must install npm)
 Create ENV 
 setup restart scripts
