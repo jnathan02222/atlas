@@ -144,15 +144,15 @@ function Home({signInHandler} : {signInHandler : ()=> void}){
     <div className="flex min-h-screen  items-center  w-screen overflow-hidden select-none">
       <div className="flex items-center justify-center w-1/2 min-h-screen ml-[10%] ">
         <div className="flex justify-center items-center  aspect-square w-4/5 drop-shadow-[20px_20px_35px_rgba(0,0,0,0.30)]">
-          <img src="Emblem_of_the_United_Nations.svg" draggable="false" className="w-full animate-slow-spin "></img>
+          <img src="/Emblem_of_the_United_Nations.svg" draggable="false" className="w-full animate-slow-spin "></img>
         </div>
         <div className="rounded-full bg-[#EF8275] border-4	border-[#EF8275] w-[13%] aspect-square absolute"></div>
-        <img src="noun-wood-texture-586023.svg" draggable="false" className="w-[13%]  animate-slow-spin  opacity-[0.05] absolute"></img>
+        <img src="/noun-wood-texture-586023.svg" draggable="false" className="w-[13%]  animate-slow-spin  opacity-[0.05] absolute"></img>
 
         <div className="rounded-full bg-white border-4	border-[#EF8275] w-[2%] aspect-square absolute"></div>
       </div>
       <div className="flex flex-col items-start absolute ml-[60%]">
-        <img src="Full_Logo_black_RGB.svg" draggable="false" className="h-6"></img>
+        <img src="/Full_Logo_black_RGB.svg" draggable="false" className="h-6"></img>
         <h1 className="text-black text-8xl">Atlas</h1>
         <div className="flex">
           <a href="/api/login" className="transition-color duration-300 hover:border-[#887880] border-2 p-2 mt-2 rounded-md text-gray-700  cursor-pointer" >Sign In</a>

@@ -1,4 +1,9 @@
+Database
 CREATE DATABASE music_db;
 \c music_db;
 CREATE TABLE names (songA VARCHAR(22), songB VARCHAR(22), playlist VARCHAR(22), PRIMARY KEY (songA, songB, playlist));
 CREATE TABLE correlations (songA VARCHAR(22), songB VARCHAR(22), count INT, PRIMARY KEY (songA, songB));
+
+Create a new instance and give it an elastic IP 
+Install Nginx and get ssl certificate 
+Install pm2 and get files from git (must install npm)
