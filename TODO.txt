@@ -33,17 +33,19 @@ LOG elastics? Use Manjeet's code
     -Other requests should probably also lock interactions 
 -Error handling + logged out message <----- 4 
 -Highlight 5 correlations DONE 
--Preload images
+-Preload images DONE
 -Something wrong with fading DONE
 
 -Embeddings + vector database (AWS hosting) <----- 5
     -Store in vector db 
 -K clustering + display text (k means++, k means, silhouette) <---- 6
     -Make numbers mean something?
-    -Hometown / constellation 
+    -Search by keyword
 EXTRA: sync up with others? maybe the discs should always spawn in the same place
 -Reset decay so that you can drag discs?
 -Shortest path?
+-Render distance?
+-Hometown / constellation 
 
 Contribute
 -Show search bar when button is clicked DONE
