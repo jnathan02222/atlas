@@ -1138,9 +1138,9 @@ export default function App() {
   }
   return (
     <PlayerContext.Provider value={{value: player, setValue: setPlayer, maxWidth:playerWidth, setMaxWidth:setPlayerWidth}}>
-      <div className="overflow-hidden">
-        <div className={`duration-500 transition  ${fadeIn ? "-translate-y-[10%] opacity-0" : ""} ${showHome ? "" : ""}`}>
-          {showHome && <Home signInHandler={signIn
+      <div className="overflow-hidden w-screen h-screen">
+        <div className={`duration-500 transition ${fadeIn ? "-translate-y-[10%] opacity-0" : ""} ${showHome ? "" : "display-none"}`}>
+          {<Home signInHandler={signIn
             }></Home>}  
         </div>
         <div className={`overflow-hidden absolute top-0 duration-500 transition  ${fadeIn ? "" : "opacity-0 -translate-y-[10%]"}`}>
