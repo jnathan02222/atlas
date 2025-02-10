@@ -16,7 +16,7 @@ const db = pgp({
   database: 'music_db',         
   user: 'postgres',           
   password: process.env.DB_PASSWORD,   
-  //ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false }
 })
 
 const OpenAI = require('openai')
@@ -303,7 +303,7 @@ app.get('/api/callback', (req, res) => {
     }).then(
       (response) => {
         res.cookie('spotify_token', response.data.access_token);
-         
+        res.redirect(process.env.WEBSITE_URL)
       }
     ).catch(
       (error)=> {
