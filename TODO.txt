@@ -35,6 +35,8 @@ LOG elastics? Use Manjeet's code
 -Highlight 5 correlations DONE 
 -Preload images DONE
 -Something wrong with fading DONE
+    -Cannot read id
+-Plays a little bit on queue change (setSong but don't let it send in another request)
 
 -Embeddings + vector database (AWS hosting) <----- 5
     -Store in vector db 
@@ -46,6 +48,13 @@ EXTRA: sync up with others? maybe the discs should always spawn in the same plac
 -Shortest path?
 -Render distance?
 -Hometown / constellation 
+-? mark button
+
+FEEDBACK
+Scroll
+Submit message 
+Line Highlights
+Increase contrast on wood texture
 
 Contribute
 -Show search bar when button is clicked DONE

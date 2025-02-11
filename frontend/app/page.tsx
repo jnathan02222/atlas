@@ -402,6 +402,69 @@ function Vinyls(){
   const mouseStart = useRef({x:0, y:0})
   const cameraStart = useRef({x:0, y:0})
 
+  async function getConstellation(){
+    //Get playlists
+    const playlists : Record<string, any> = await axios({
+      method: 'get',
+      url: '/api/user-playlists'
+    })
+    //Get top tracks
+    const topTracks : Record<string, any> = await axios({
+      method: 'get',
+      url: '/api/user-top-tracks'
+    })
+    //Add disks
+    const updatedDiscs : Record<string, Disk> = {}
+    const trackSet : Set<string> = new Set()
+    topTracks.data.tracks.forEach((track : Record<string, any>, index : number)=> {
+      updatedDiscs[track.id] = {
+        x : 0, 
+        y : 0, 
+        image : Math.floor(Math.random()*images.length), 
+        velocity : {x : 0, y : 0}, 
+        acceleration : {x : 0, y : 0}, 
+        opacity : 0,
+        song : {name : track.name, author : track.artists.map((artist : Record<string, any>) => artist.name).join(', '), album : track.album.name, id : track.id},
+        size : 1 + index/100, 
+        movementDamp : 1
+      }
+      trackSet.add(track.id)
+    })
+    //Set correlations to 0
+    correlations.current = {}
+    /*const tracks = topTracks.data.tracks.map((track : Record<string, any>) => track.id)
+    getCombinations(tracks).forEach((combo : Array<string>)=> {
+      correlations.current[`${combo[0]}${combo[1]}`] = 0
+    })*/
+    
+    await Promise.all(
+      playlists.data.playlists.map(async (playlist : Record<string, any>) => {
+        const response = await axios({
+          method: 'get',
+          url : `/api/playlist-tracks?id=${playlist.id}`
+        })
+        const tracks = response.data.items.filter((item : Record<string, any>) => item.track && trackSet.has(item.track.id)).map((item : Record<string, any>) => item.track.id)
+        console.log(playlist.name)
+        getCombinations(tracks).forEach(
+          (combo : Array<string>) => {
+            if(correlations.current[`${combo[0]}${combo[1]}`]){
+              correlations.current[`${combo[0]}${combo[1]}`] += 1
+            }else{
+              correlations.current[`${combo[0]}${combo[1]}`] = 1
+            }
+          }
+        )
+      })
+    )
+    /*for(const [key, count] of Object.entries(correlations.current)){
+      if(count === 0){
+        delete correlations.current[key]
+      }
+    }*/
+    setDiscs(updatedDiscs)
+  }
+  useEffect(()=>{getConstellation()},[])
+
   function handleMouseDown(e :  React.MouseEvent<HTMLDivElement, MouseEvent>){
     mouseStart.current = {x : e.clientX, y : e.clientY}
     mouseDown.current = true
@@ -496,6 +559,7 @@ function Vinyls(){
             if(updatedDisks[selectedSong.id]){
               updatedDisks[selectedSong.id].movementDamp = 0.5
             }
+
             function getRandomDisk(spread : number, id : string){
               const spreadX = (Math.random()-0.5)*2 * spread //Radius of spread
               const spreadY = Math.sqrt(spread*spread-spreadX*spreadX)
@@ -828,7 +892,7 @@ function Vinyls(){
                   shadowOffsetY={5*zoom}
                   onMouseEnter={()=>{focusedDisks.current.add(id)}}
                   onMouseLeave={()=>{if(id!==selectedSong.id)focusedDisks.current.delete(id)}}
-                  onClick={()=>{if(!fadedDisks.current.has(id))setSelectedSong(disc.song)}}
+                  onClick={()=>{setSelectedSong(disc.song)}}
                 />
             })
           }
@@ -1012,7 +1076,7 @@ function Contribute(){
       <button onClick={()=>{
         setShowSearch(true) 
         setFadeIn(true)
-      }} className="z-10 bg-white transition-color duration-300 border-2 p-2  rounded-md text-gray-700 cursor-pointer hover:border-[#887880]">Contribute</button>
+      }} className="z-10 bg-white transition-color duration-300 border-2 ml-2 p-2  rounded-md text-gray-700 cursor-pointer hover:border-[#887880]">Contribute</button>
     </>
   )
 }
@@ -1126,6 +1190,20 @@ export default function App() {
         if(response.data.logged_in){
           signIn()
           setLoggedIn(true)
+          axios({
+      method: 'get',
+      url: '/api/login-state'
+    }).then(
+      response => {
+        if(response.data.logged_in){
+          signIn()
+          setLoggedIn(true)
+          
+          
+        }
+      }
+    )
+
         }
       }
     )
