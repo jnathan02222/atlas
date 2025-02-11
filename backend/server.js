@@ -147,6 +147,7 @@ app.get('/api/playlist-tracks', async (req, res) => {
     const response = await getSpotifyPlaylist(req.cookies['spotify_token'], req)
     res.json(response.data)
   }catch(error){
+    console.log(error)
     for(var i = 0; i < 3; i++){ //Attempt 3 times
       try {
         //Use general token
@@ -163,62 +164,6 @@ app.get('/api/playlist-tracks', async (req, res) => {
   }
 })  
 
-app.get('/api/user-playlists', async (req, res) => {
-  var result = []
-  var offset = 0
-
-  while(true){
-    const response = await axios({
-      method: 'get',
-      url : 'https://api.spotify.com/v1/me/playlists',
-      headers: {
-        'Authorization': 'Bearer ' + req.cookies['spotify_token'],
-      },
-      params: {
-        offset: offset, 
-        limit: 10
-      }
-    })
-    result = result.concat(response.data.items)
-    if(!response.data.next){
-      break
-    }
-    break
-    offset += 50
-  }
-  res.json({playlists: result})
-})
-
-app.get('/api/user-top-tracks', async (req, res) => {
-  var response = await axios({
-    method: 'get',
-    url : 'https://api.spotify.com/v1/me/top/tracks',
-    headers: {
-      'Authorization': 'Bearer ' + req.cookies['spotify_token'],
-    },
-    params: {
-      offset: 0, 
-      limit: 50,
-      time_range: 'long_term'
-
-    }
-  })
-  let result = response.data.items
-  /*response = await axios({
-    method: 'get',
-    url : 'https://api.spotify.com/v1/me/top/tracks',
-    headers: {
-      'Authorization': 'Bearer ' + req.cookies['spotify_token'],
-    },
-    params: {
-      offset: 50, 
-      limit: 50,
-      time_range: 'long_term' 
-    }
-  })
-  result = result.concat(response.data.items)*/
-  res.json({tracks : result})
-})
 
 // /api/contribute 
 app.put('/api/contribute', async (req, res) => {
@@ -383,6 +328,67 @@ app.get('/api/login', (req, res) => {
       state: state
     }));
 })
+
+
+app.get('/api/user-playlists', async (req, res) => {
+  var result = []
+  var offset = 0
+
+  while(true){
+    const response = await axios({
+      method: 'get',
+      url : 'https://api.spotify.com/v1/me/playlists',
+      headers: {
+        'Authorization': 'Bearer ' + req.cookies['spotify_token'],
+      },
+      params: {
+        offset: offset, 
+        limit: 50
+      }
+    })
+    result = result.concat(response.data.items)
+    if(!response.data.next){
+      break
+    }
+    
+    offset += 50
+  }
+  res.json({playlists: result})
+})
+
+app.get('/api/user-top-tracks', async (req, res) => {
+  var response = await axios({
+    method: 'get',
+    url : 'https://api.spotify.com/v1/me/top/tracks',
+    headers: {
+      'Authorization': 'Bearer ' + req.cookies['spotify_token'],
+    },
+    params: {
+      offset: 0, 
+      limit: 50,
+      time_range: 'long_term'
+
+    }
+  })
+  let result = response.data.items
+  /*response = await axios({
+    method: 'get',
+    url : 'https://api.spotify.com/v1/me/top/tracks',
+    headers: {
+      'Authorization': 'Bearer ' + req.cookies['spotify_token'],
+    },
+    params: {
+      offset: 50, 
+      limit: 50,
+      time_range: 'long_term' 
+    }
+  })
+  result = result.concat(response.data.items)*/
+  res.json({tracks : result})
+})
+
+
+
 app.listen(8888, ()=>{
   console.log("Listening on 8888")
 })

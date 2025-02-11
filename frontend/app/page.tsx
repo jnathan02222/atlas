@@ -416,19 +416,24 @@ function Vinyls(){
     //Add disks
     const updatedDiscs : Record<string, Disk> = {}
     const trackSet : Set<string> = new Set()
+
+    var angle = 0
+    const radius = DISC_SIZE*100/(2*Math.PI)
+
     topTracks.data.tracks.forEach((track : Record<string, any>, index : number)=> {
       updatedDiscs[track.id] = {
-        x : 0, 
-        y : 0, 
+        x : Math.cos(angle)*radius, 
+        y : Math.sin(angle)*radius, 
         image : Math.floor(Math.random()*images.length), 
         velocity : {x : 0, y : 0}, 
         acceleration : {x : 0, y : 0}, 
         opacity : 0,
         song : {name : track.name, author : track.artists.map((artist : Record<string, any>) => artist.name).join(', '), album : track.album.name, id : track.id},
         size : 1 + index/100, 
-        movementDamp : 1
+        movementDamp : 0.3
       }
       trackSet.add(track.id)
+      angle += (4*Math.PI)/100
     })
     //Set correlations to 0
     correlations.current = {}
@@ -437,25 +442,24 @@ function Vinyls(){
       correlations.current[`${combo[0]}${combo[1]}`] = 0
     })*/
     
-    await Promise.all(
-      playlists.data.playlists.map(async (playlist : Record<string, any>) => {
-        const response = await axios({
-          method: 'get',
-          url : `/api/playlist-tracks?id=${playlist.id}`
-        })
-        const tracks = response.data.items.filter((item : Record<string, any>) => item.track && trackSet.has(item.track.id)).map((item : Record<string, any>) => item.track.id)
-        console.log(playlist.name)
-        getCombinations(tracks).forEach(
-          (combo : Array<string>) => {
-            if(correlations.current[`${combo[0]}${combo[1]}`]){
-              correlations.current[`${combo[0]}${combo[1]}`] += 1
-            }else{
-              correlations.current[`${combo[0]}${combo[1]}`] = 1
-            }
-          }
-        )
+    for(const playlist of playlists.data.playlists){
+      const response = await axios({
+        method: 'get',
+        url : `/api/playlist-tracks?id=${playlist.id}`
       })
-    )
+      const tracks = response.data.items.filter((item : Record<string, any>) => item.track && trackSet.has(item.track.id)).map((item : Record<string, any>) => item.track.id)
+      console.log(playlist.name)
+      getCombinations(tracks).forEach(
+        (combo : Array<string>) => {
+          if(correlations.current[`${combo[0]}${combo[1]}`]){
+            correlations.current[`${combo[0]}${combo[1]}`] += 1
+          }else{
+            correlations.current[`${combo[0]}${combo[1]}`] = 1
+          }
+        }
+      )
+    }
+    
     /*for(const [key, count] of Object.entries(correlations.current)){
       if(count === 0){
         delete correlations.current[key]
@@ -463,7 +467,8 @@ function Vinyls(){
     }*/
     setDiscs(updatedDiscs)
   }
-  useEffect(()=>{getConstellation()},[])
+  //useEffect(()=>{getConstellation()},[])
+
 
   function handleMouseDown(e :  React.MouseEvent<HTMLDivElement, MouseEvent>){
     mouseStart.current = {x : e.clientX, y : e.clientY}
@@ -697,7 +702,7 @@ function Vinyls(){
           const discA = updatedDiscs[combo[0]]
           const discB = updatedDiscs[combo[1]]
           var distanceAndAngle = getDistanceAndAngle(discA.x, discA.y, discB.x, discB.y)
-
+          
           const minDistance = 200
           if(distanceAndAngle.distance < minDistance){
             const difference = getXYDifference(minDistance-distanceAndAngle.distance, distanceAndAngle.angle)
