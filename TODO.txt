@@ -50,6 +50,8 @@ EXTRA: sync up with others? maybe the discs should always spawn in the same plac
 -Hometown / constellation 
 -? mark button
 
+//Migrate to graph db
+
 FEEDBACK
 Scroll
 Submit message 
