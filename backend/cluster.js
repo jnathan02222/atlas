@@ -17,20 +17,69 @@ function calculateCentroid(cluster){
     return sumVector.map(component => component/cluster.length)
 }
 
-function initalizeKMeans(vectors, k){
-    return []
+function weightedRandom(weights){
+    var sum = 0
+    weights.forEach(weight => sum += weight)
+    var random = sum*Math.random()
+
+    var total = 0
+    for(var i = 0; i < weights.length; i++){
+        if(weights[i] === 0) continue
+
+        total += weights[i]
+        if(random < total){
+            return i 
+        }
+    }
+    return weights.length-1
 }
+
+function initalizeKMeans(vectors, k){
+    //Using kMeans++ 
+    //Compute distances
+    const distances = {}
+    for(var i = 0; i < vectors.length; i++){
+        for(var j = i+1; j < vectors.length; j++){
+            distances[`${i}:${j}`] = squaredEuclidianDistance(vector[i], vector[j])
+        }
+    }
+
+    //Pick a random vector
+    var randomIndex = Math.floor(Math.random()*vectors.length)
+    const centroids = [vectors[randomIndex]]
+    const usedVectors = new Set()
+    usedVectors.add(randomIndex)
+
+    while(centroids.length < k){
+        randomIndex = weightedRandom(vectors.map(
+            (vector, i) => {
+                if(usedVectors.has(i)) return 0 
+                //Weight proportional to squared distance to nearest centroid
+                var minDistance = null
+                usedVectors.forEach((_, j) => {
+                    const distance = distances[`${i}${j}`] ? distances[`${i}${j}`] : distances[`${j}${i}`]
+                    if(distance < minDistance) minDistance = distance
+                })
+                return minDistance
+            }
+        ))
+        centroids.push(vectors[randomIndex])
+        usedVectors.add(randomIndex)
+    }
+    return centroids
+}
+
 
 //Should not be called with k = 0 or no vectors
 function kMeans(vectors, k){
     //Initialize using kmeans++ 
     var centroids = initalizeKMeans(vectors, k)
-
     //Naive algorithmn 
     while(true){
         var clusters = centroids.map(_ => [])
+
         //Assign each vector to a centroid
-        vectors.forEach(vector => {
+        vectors.forEach((vector, i) => {
             var belongsToCluster = null
             var minDistance = null
             //Iterate over all centroids and find the nearest
@@ -42,18 +91,27 @@ function kMeans(vectors, k){
                 }
             })
             clusters[belongsToCluster].push(vector)
+            clustersByIndices[belongsToCluster].push(i)
         })
         //Determine new centroids
         var new_centroids = clusters.map(cluster => calculateCentroid(cluster))
         //Check equality
-        if(centroids === new_centroids){
-            return centroids
+        //Somehow
+        if(false){
+            break
         }
+        
         centroids = new_centroids
     }
+
+    return centroids
 }
 
 function manyKMeansWithSilhouette(vectors, start, stop){
-    
+    for(var k = start; k < stop; i++){
+        const centroids = kMeans(vectors, k)
+        //For each vector, compute distance to each centroid
+        //Calculate simplified silhouette
+    }
 }
 
