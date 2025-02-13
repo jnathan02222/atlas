@@ -111,10 +111,10 @@ function kMeans(vectors, k){
 }
 
 function manyKMeansWithSilhouette(vectors, start, stop){
-    const bestCentroids = null 
-    const greatestSilhouette = null
+    var bestCentroids = null 
+    var greatestSilhouette = null
 
-    for(var k = start; k < stop; i++){
+    for(var k = start; k < stop; k++){
         const {centroids, clusters} = kMeans(vectors, k)        
         //Calculate simplified silhouette
         var silhouette = 0
@@ -139,4 +139,4 @@ function manyKMeansWithSilhouette(vectors, start, stop){
     return bestCentroids
 }
 
-module.exports = { calculateCentroid, initalizeKMeans, kMeans };
+module.exports = { calculateCentroid, initalizeKMeans, kMeans, manyKMeansWithSilhouette };
