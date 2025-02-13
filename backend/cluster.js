@@ -69,14 +69,20 @@ function initalizeKMeans(vectors, k){
     return centroids
 }
 
+function arrayEqual(a ,b){
+    a.length === b.length && a.forEvery((_, i) => a[i] === b[i])
+}
 
 //Should not be called with k = 0 or no vectors
 function kMeans(vectors, k){
     //Initialize using kmeans++ 
     var centroids = initalizeKMeans(vectors, k)
+    var prevClustersByIndices = centroids.map(_ => []) 
+
     //Naive algorithmn 
     while(true){
         var clusters = centroids.map(_ => [])
+        var clustersByIndices = centroids.map(_ => [])
 
         //Assign each vector to a centroid
         vectors.forEach((vector, i) => {
@@ -95,23 +101,44 @@ function kMeans(vectors, k){
         })
         //Determine new centroids
         var new_centroids = clusters.map(cluster => calculateCentroid(cluster))
-        //Check equality
-        //Somehow
-        if(false){
+        //Check equality of clusters
+        if(prevClustersByIndices && clustersByIndices.forEvery((cluster, i) => arrayEqual(cluster, prevClustersByIndices[i]))){
             break
         }
+        prevClustersByIndices = clustersByIndices
         
         centroids = new_centroids
     }
 
-    return centroids
+    return {centroids: centroids, clusters: clusters}
 }
 
 function manyKMeansWithSilhouette(vectors, start, stop){
+    const bestCentroids = null 
+    const greatestSilhouette = null
+
     for(var k = start; k < stop; i++){
-        const centroids = kMeans(vectors, k)
-        //For each vector, compute distance to each centroid
+        const {centroids, clusters} = kMeans(vectors, k)        
         //Calculate simplified silhouette
+        var silhouette = 0
+        //For each vector, compute distance to own centroid and other centroids
+        clusters.forEach(
+            (cluster, i) => {
+                cluster.forEach(
+                    (vector) => {
+                        var a = squaredEuclidianDistance(vector, centroids[i])
+                        var b = Math.min(...centroids.filter((_, j) => i !== j).map(centroid => squaredEuclidianDistance(centroid, vector)))
+                        silhouette += (b - a)/Math.max(a, b)
+                    }
+                )
+            }
+        )
+        silhouette /= vectors.length
+        if(!greatestSilhouette || silhouette > greatestSilhouette){
+            greatestSilhouette = silhouette
+            bestCentroids = centroids
+        }
     }
+    return bestCentroids
 }
 
