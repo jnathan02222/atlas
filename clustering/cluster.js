@@ -40,7 +40,7 @@ function initalizeKMeans(vectors, k){
     const distances = {}
     for(var i = 0; i < vectors.length; i++){
         for(var j = i+1; j < vectors.length; j++){
-            distances[`${i}:${j}`] = squaredEuclidianDistance(vector[i], vector[j])
+            distances[`${i}:${j}`] = squaredEuclidianDistance(vectors[i], vectors[j])
         }
     }
 
@@ -57,8 +57,8 @@ function initalizeKMeans(vectors, k){
                 //Weight proportional to squared distance to nearest centroid
                 var minDistance = null
                 usedVectors.forEach((_, j) => {
-                    const distance = distances[`${i}${j}`] ? distances[`${i}${j}`] : distances[`${j}${i}`]
-                    if(distance < minDistance) minDistance = distance
+                    const distance = distances[`${i}:${j}`] ? distances[`${i}:${j}`] : distances[`${j}:${i}`]
+                    if(!minDistance || distance < minDistance) minDistance = distance
                 })
                 return minDistance
             }
@@ -70,7 +70,7 @@ function initalizeKMeans(vectors, k){
 }
 
 function arrayEqual(a ,b){
-    a.length === b.length && a.forEvery((_, i) => a[i] === b[i])
+    return a.length === b.length && a.every((_, i) => a[i] === b[i])
 }
 
 //Should not be called with k = 0 or no vectors
@@ -100,16 +100,13 @@ function kMeans(vectors, k){
             clustersByIndices[belongsToCluster].push(i)
         })
         //Determine new centroids
-        var new_centroids = clusters.map(cluster => calculateCentroid(cluster))
         //Check equality of clusters
-        if(prevClustersByIndices && clustersByIndices.forEvery((cluster, i) => arrayEqual(cluster, prevClustersByIndices[i]))){
+        if(prevClustersByIndices && clustersByIndices.every((cluster, i) => arrayEqual(cluster, prevClustersByIndices[i]))){
             break
         }
+        centroids = clusters.map(cluster => calculateCentroid(cluster))
         prevClustersByIndices = clustersByIndices
-        
-        centroids = new_centroids
     }
-
     return {centroids: centroids, clusters: clusters}
 }
 
@@ -142,3 +139,4 @@ function manyKMeansWithSilhouette(vectors, start, stop){
     return bestCentroids
 }
 
+module.exports = { calculateCentroid, initalizeKMeans, kMeans };
