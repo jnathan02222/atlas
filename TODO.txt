@@ -50,7 +50,9 @@ EXTRA: sync up with others? maybe the discs should always spawn in the same plac
 -Hometown / constellation 
 -? mark button
 
-//Migrate to graph db
+Migrate to graph db
+Readjust playlist storage
+Best descriptor endpoint: get all playlists, get all vectors, cluster and then get nearest neighbour of centroid
 
 FEEDBACK
 Scroll

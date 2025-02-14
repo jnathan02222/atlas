@@ -104,8 +104,10 @@ function kMeans(vectors, k){
         if(prevClustersByIndices && clustersByIndices.every((cluster, i) => arrayEqual(cluster, prevClustersByIndices[i]))){
             break
         }
+        
         centroids = clusters.map(cluster => calculateCentroid(cluster))
         prevClustersByIndices = clustersByIndices
+        
     }
     return {centroids: centroids, clusters: clusters}
 }

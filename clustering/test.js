@@ -20,8 +20,8 @@ async function generateScatterPlot(){
 
   const fullCluster = [...clusterA, ...clusterB, ...clusterC]
   const {centroids, clusters} = kMeans(fullCluster.map(point => [point.x, point.y]), 3)
-  console.log(centroids)
-  console.log(manyKMeansWithSilhouette(fullCluster.map(point => [point.x, point.y]), 1, 10))
+  //console.log(centroids)
+  //console.log(manyKMeansWithSilhouette(fullCluster.map(point => [point.x, point.y]), 1, 10))
 
   function getCentroid(cluster){
     return calculateCentroid(cluster.map(point => [point.x, point.y]))
