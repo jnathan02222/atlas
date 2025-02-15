@@ -1,8 +1,9 @@
 Database
 CREATE DATABASE music_db;
 \c music_db;
-CREATE TABLE names (songA VARCHAR(22), songB VARCHAR(22), playlist VARCHAR(22), PRIMARY KEY (songA, songB, playlist));
+CREATE TABLE names (song VARCHAR(22), playlist VARCHAR(22), PRIMARY KEY (song, playlist));
 CREATE TABLE correlations (songA VARCHAR(22), songB VARCHAR(22), count INT, PRIMARY KEY (songA, songB));
+CREATE TABLE embeddings (playlist VARCHAR(22) PRIMARY KEY, embedding vector(512));
 
 Create a new instance and give it an elastic IP 
 Install Nginx (setup proxies) and get ssl certificate (make sure you got a domain to point to the ip)

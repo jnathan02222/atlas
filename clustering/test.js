@@ -1,7 +1,7 @@
 
 const { ChartJSNodeCanvas } = require("chartjs-node-canvas");
 const fs = require("fs");
-const {calculateCentroid, initalizeKMeans, kMeans, manyKMeansWithSilhouette} = require("./cluster")
+const {calculateCentroid, initalizeKMeans, kMeans, manyKMeansWithSilhouette} = require(".")
 
 const chartJSNodeCanvas = new ChartJSNodeCanvas({ width : 800, height : 800 });
 

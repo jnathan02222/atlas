@@ -1,3 +1,5 @@
+//Potential errors to catch: vectors must be of dimension > 0 and all the same size
+
 function squaredEuclidianDistance(vectorA, vectorB){
     var sum = 0
     for(var i = 0; i < vectorA.length; i++){
@@ -8,6 +10,7 @@ function squaredEuclidianDistance(vectorA, vectorB){
 }
 
 function calculateCentroid(cluster){
+
     const sumVector = cluster[0].map(_ => 0)
     cluster.forEach(vector => {
         vector.forEach((component, i) => {
@@ -15,6 +18,10 @@ function calculateCentroid(cluster){
         })
     })
     return sumVector.map(component => component/cluster.length)
+}
+
+function arrayEqual(a ,b){
+    return a.length === b.length && a.every((_, i) => a[i] === b[i])
 }
 
 function weightedRandom(weights){
@@ -69,10 +76,6 @@ function initalizeKMeans(vectors, k){
     return centroids
 }
 
-function arrayEqual(a ,b){
-    return a.length === b.length && a.every((_, i) => a[i] === b[i])
-}
-
 //Should not be called with k = 0 or no vectors
 function kMeans(vectors, k){
     //Initialize using kmeans++ 
@@ -105,7 +108,8 @@ function kMeans(vectors, k){
             break
         }
         
-        centroids = clusters.map(cluster => calculateCentroid(cluster))
+        //In the case where a cluster is empty (should only be possible if two centroids are the same), the centroid stays the same
+        centroids = clusters.map((cluster, i) => cluster.length > 0 ? calculateCentroid(cluster) : centroids[i])
         prevClustersByIndices = clustersByIndices
         
     }
@@ -113,10 +117,10 @@ function kMeans(vectors, k){
 }
 
 function manyKMeansWithSilhouette(vectors, start, stop){
-    var bestCentroids = null 
+    var bestResult = null 
     var greatestSilhouette = null
 
-    for(var k = start; k < stop; k++){
+    for(var k = start; k <= stop; k++){
         const {centroids, clusters} = kMeans(vectors, k)        
         //Calculate simplified silhouette
         var silhouette = 0
@@ -135,10 +139,10 @@ function manyKMeansWithSilhouette(vectors, start, stop){
         silhouette /= vectors.length
         if(!greatestSilhouette || silhouette > greatestSilhouette){
             greatestSilhouette = silhouette
-            bestCentroids = centroids
+            bestResult = {centroids, clusters}
         }
     }
-    return bestCentroids
+    return bestResult
 }
 
 module.exports = { calculateCentroid, initalizeKMeans, kMeans, manyKMeansWithSilhouette };

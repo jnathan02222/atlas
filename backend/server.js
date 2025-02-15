@@ -19,6 +19,7 @@ const db = pgp({
   //ssl: { rejectUnauthorized: false }
 })
 
+const { manyKMeansWithSilhouette } = require('clustering')
 const OpenAI = require('openai')
 const openai = new OpenAI()
 
@@ -83,20 +84,6 @@ async function getSpotifyPlaylist(token, req){
   })
 }
 
-async function getSpotifyTracks(token, ids){
-  return axios({
-    method: 'get',
-    url : `https://api.spotify.com/v1/tracks`,
-    headers: {
-      'Authorization': 'Bearer ' + token,
-    },
-    params: {
-      ids: ids.join(",")
-    }
-  })
-}
-
-
 
 function generateRandomString(n) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -141,7 +128,7 @@ app.get('/api/search', async (req, res) => {
   }
 })
 
-// /api/playlist-stop
+// /api/playlist-tracks
 app.get('/api/playlist-tracks', async (req, res) => {
   try{
     const response = await getSpotifyPlaylist(req.cookies['spotify_token'], req)
@@ -162,40 +149,52 @@ app.get('/api/playlist-tracks', async (req, res) => {
       }
     }
   }
+  
 })  
 
 
 // /api/contribute 
 app.put('/api/contribute', async (req, res) => {
-
   //Get vector embedding if necessary
-  /*const response = await openai.embeddings.create({
-    model: "text-embedding-3-small",
-    input: `Playlist title: ${req.body.playlist.name}`,
-    encoding_format: "float",
-    dimensions: 512
-  })*/
-  //console.log(response.data)
-  //Error handling
+  const playlists = await db.any(`SELECT * FROM embeddings WHERE playlist = '${req.body.playlist.id}'`)
 
+  if(playlists.length === 0){
+    const response = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: `Playlist title: ${req.body.playlist.name}`,
+      encoding_format: "float",
+      dimensions: 512
+    })
+    await db.none(`INSERT INTO embeddings VALUES ('${req.body.playlist.id}', '[${response.data[0].embedding.toString()}]')`)
+  }
+
+  //POTENTIAL FOR SPEEDUP / LESS STORAGE
+  //BEWARE OF CONCURRENCY ISSUES
+
+  //Mark each song and playlist as recorded
+  const untracked = new Set()
   await Promise.all(
-    getCombinations(req.body.tracks).map(
-      async combo => {
-        //POTENTIAL FOR SPEEDUP / LESS STORAGE
-        //BEWARE OF CONCURRENCY ISSUES
-        try{
-          //Check if the playlist is being tracked. Fails if the correlation already exists for this playlist
-          await db.none(`INSERT INTO names VALUES('${combo[0]}','${combo[1]}','${req.body.playlist.id}')`)
-          //Upsert correlation count
-          await db.none(`
-            INSERT INTO correlations VALUES('${combo[0]}','${combo[1]}',1)
-            ON CONFLICT (songA, songB) DO
-            UPDATE SET count = correlations.count + 1
-            `)
-        }catch(error){
-          //oublie moi
-          //error promise somehow
+    req.body.tracks.map(async track => {
+        try {
+          await db.none(`INSERT INTO names VALUES('${track}','${req.body.playlist.id}')`)
+          untracked.add(track)
+        } catch (error) {
+          //If it already exists it will error without marking the track as untracked
         }
+      }
+    )
+  )
+
+  //Only update correlation if at least one of the tracks is untracked
+  await Promise.all(
+    getCombinations(req.body.tracks).filter(combo => untracked.has(combo[0]) || untracked.has(combo[1])).map(
+      async combo => {
+        //Upsert correlation count
+        await db.none(`
+          INSERT INTO correlations VALUES('${combo[0]}','${combo[1]}',1)
+          ON CONFLICT (songA, songB) DO
+          UPDATE SET count = correlations.count + 1
+          `)
       }
     )
   )
@@ -203,44 +202,81 @@ app.put('/api/contribute', async (req, res) => {
 })
 
 // /api/neighbours
-app.get('/api/neighbours', (req, res) => {
+app.get('/api/neighbours', async (req, res) => {
   const track_id = req.query.track_id
-  db.any(`SELECT * FROM correlations WHERE songA = '${track_id}' OR songB = '${track_id}'`).then(
-    async (data)=>{
-      //Select all playlists that contain the song 
-      //Get vectors for each playlist
-      //K cluster
-      const neighbours = data.sort((a, b) => a.count - b.count).slice(0, 5)
-      const ids = [...neighbours.map((neighbour) => neighbour.songa !== track_id ? neighbour.songa : neighbour.songb), track_id]
+  const data = await db.any(`SELECT * FROM correlations WHERE songA = '${track_id}' OR songB = '${track_id}'`)
+    
+  //Select all playlists that contain the song 
+  //Get vectors for each playlist
+  //K cluster
+  const neighbours = data.sort((a, b) => a.count - b.count).slice(0, 5)
+  const ids = [...neighbours.map((neighbour) => neighbour.songa !== track_id ? neighbour.songa : neighbour.songb), track_id]
 
-      try{
-        const response = await getSpotifyTracks(req.cookies['spotify_token'], ids)
-        res.json({neighbours : neighbours, tracks : response.data.tracks})
-      }catch(error){
-        console.log(error)
-        for(var i = 0; i < 3; i++){ //Attempt 3 times
-          try {
-            //Use general token
-            const response = await getSpotifyTracks(await readGlobalSpotifyToken(), ids)
-            res.json({neighbours : neighbours, tracks : response.data.tracks})
-            break
-          } catch (error) {
-            console.log(error)
-            if(error.status !== 401){
-              break
-            }
-            await refreshToken()
-          }
+  for(var i = 0; i < 3; i++){ //Attempt 3 times
+    try {
+      //Use general token
+      const response = await axios({
+        method: 'get',
+        url : `https://api.spotify.com/v1/tracks`,
+        headers: {
+          'Authorization': 'Bearer ' + await readGlobalSpotifyToken(),
+        },
+        params: {
+          ids: ids.join(",")
         }
-      }
-
-    }
-  ).catch(
-    error => {
+      })
+      res.json({neighbours : neighbours, tracks : response.data.tracks})
+      break
+    } catch (error) {
       console.log(error)
+      if(error.status !== 401){
+        break
+      }
+      await refreshToken()
     }
-  )
+  }
 })
+
+app.get('/api/region-name', async (req, res) => {
+  const playlists = []
+  await Promise.all(
+    req.query.tracks.map(async track => {
+      const data = await db.any(`SELECT playlist FROM names WHERE song = '${track}'`)
+      playlists.push(...data.map(item => item.playlist))
+    })
+  )
+  const vectors = []
+  await Promise.all(
+    playlists.map(async playlist => {
+      const vectorItem = await db.one(`SELECT embedding FROM embeddings WHERE playlist = '${playlist}'`)
+      const vectorString = vectorItem.embedding
+      vectors.push(vectorString.slice(1, -1).split(',').map(Number))
+    })
+  )
+  //K means 
+  const {centroids, clusters} = manyKMeansWithSilhouette(vectors, 1, Math.min(3, vectors.length))
+  
+  //Get playlist name for centroid of largest cluster
+  var maxClusterSize = 0
+  var maxClusterIndex = 0
+  clusters.forEach((cluster, i) => {
+    if(cluster.length > maxClusterSize){
+      maxClusterIndex = i
+      maxClusterSize = cluster.length
+    } 
+  })
+  
+  const bestPlaylist = (await db.one(`SELECT playlist FROM embeddings ORDER BY embedding <=> '[${centroids[maxClusterIndex].toString()}]' LIMIT 1`)).playlist
+  
+  const response = await axios({
+    method: 'get',
+    url: `https://api.spotify.com/v1/playlists/${bestPlaylist}`,
+    headers: {
+      'Authorization': 'Bearer ' + await readGlobalSpotifyToken(),
+    }
+  })
+  res.json({name : response.data.name})
+})  
 
 // /api/login-state
 app.get('/api/login-state', (req, res) => {
@@ -330,31 +366,31 @@ app.get('/api/login', (req, res) => {
 })
 
 
-app.get('/api/user-playlists', async (req, res) => {
-  var result = []
-  var offset = 0
+// app.get('/api/user-playlists', async (req, res) => {
+//   var result = []
+//   var offset = 0
 
-  while(true){
-    const response = await axios({
-      method: 'get',
-      url : 'https://api.spotify.com/v1/me/playlists',
-      headers: {
-        'Authorization': 'Bearer ' + req.cookies['spotify_token'],
-      },
-      params: {
-        offset: offset, 
-        limit: 50
-      }
-    })
-    result = result.concat(response.data.items)
-    if(!response.data.next){
-      break
-    }
+//   while(true){
+//     const response = await axios({
+//       method: 'get',
+//       url : 'https://api.spotify.com/v1/me/playlists',
+//       headers: {
+//         'Authorization': 'Bearer ' + req.cookies['spotify_token'],
+//       },
+//       params: {
+//         offset: offset, 
+//         limit: 50
+//       }
+//     })
+//     result = result.concat(response.data.items)
+//     if(!response.data.next){
+//       break
+//     }
     
-    offset += 50
-  }
-  res.json({playlists: result})
-})
+//     offset += 50
+//   }
+//   res.json({playlists: result})
+// })
 
 app.get('/api/user-top-tracks', async (req, res) => {
   var response = await axios({
@@ -371,19 +407,6 @@ app.get('/api/user-top-tracks', async (req, res) => {
     }
   })
   let result = response.data.items
-  /*response = await axios({
-    method: 'get',
-    url : 'https://api.spotify.com/v1/me/top/tracks',
-    headers: {
-      'Authorization': 'Bearer ' + req.cookies['spotify_token'],
-    },
-    params: {
-      offset: 50, 
-      limit: 50,
-      time_range: 'long_term' 
-    }
-  })
-  result = result.concat(response.data.items)*/
   res.json({tracks : result})
 })
 

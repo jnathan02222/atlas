@@ -38,9 +38,9 @@ LOG elastics? Use Manjeet's code
     -Cannot read id
 -Plays a little bit on queue change (setSong but don't let it send in another request)
 
--Embeddings + vector database (AWS hosting) <----- 5
-    -Store in vector db 
--K clustering + display text (k means++, k means, silhouette) <---- 6
+-Embeddings + vector database (AWS hosting) <----- 5 DONE
+    -Store in vector db DONE
+-K clustering + display text (k means++, k means, silhouette) <---- 6 DONE
     -Make numbers mean something?
     -Search by keyword
 EXTRA: sync up with others? maybe the discs should always spawn in the same place
@@ -49,10 +49,10 @@ EXTRA: sync up with others? maybe the discs should always spawn in the same plac
 -Render distance?
 -Hometown / constellation 
 -? mark button
-
 Migrate to graph db
-Readjust playlist storage
-Best descriptor endpoint: get all playlists, get all vectors, cluster and then get nearest neighbour of centroid
+
+Readjust playlist storage DONE
+Best descriptor endpoint: get all playlists, get all vectors, cluster and then get nearest neighbour of centroid DONE
 
 FEEDBACK
 Scroll

@@ -402,71 +402,83 @@ function Vinyls(){
   const mouseStart = useRef({x:0, y:0})
   const cameraStart = useRef({x:0, y:0})
 
-  async function getConstellation(){
-    //Get playlists
-    const playlists : Record<string, any> = await axios({
-      method: 'get',
-      url: '/api/user-playlists'
-    })
-    //Get top tracks
-    const topTracks : Record<string, any> = await axios({
-      method: 'get',
-      url: '/api/user-top-tracks'
-    })
-    //Add disks
-    const updatedDiscs : Record<string, Disk> = {}
-    const trackSet : Set<string> = new Set()
+  // axios({
+  //   method: 'get',
+  //   url: '/api/region-name',
+  //   params: {
+  //     tracks: response.data.tracks.map((track : Record<string, any>) => track.id)
+  //   }
+  // }).then(
+  //   response => {
+  //     console.log(response.data)
+  //   }
+  // )
 
-    var angle = 0
-    const radius = DISC_SIZE*100/(2*Math.PI)
+  // async function getConstellation(){
+  //   //Get playlists
+  //   const playlists : Record<string, any> = await axios({
+  //     method: 'get',
+  //     url: '/api/user-playlists'
+  //   })
+  //   //Get top tracks
+  //   const topTracks : Record<string, any> = await axios({
+  //     method: 'get',
+  //     url: '/api/user-top-tracks'
+  //   })
+  //   //Add disks
+  //   const updatedDiscs : Record<string, Disk> = {}
+  //   const trackSet : Set<string> = new Set()
 
-    topTracks.data.tracks.forEach((track : Record<string, any>, index : number)=> {
-      updatedDiscs[track.id] = {
-        x : Math.cos(angle)*radius, 
-        y : Math.sin(angle)*radius, 
-        image : Math.floor(Math.random()*images.length), 
-        velocity : {x : 0, y : 0}, 
-        acceleration : {x : 0, y : 0}, 
-        opacity : 0,
-        song : {name : track.name, author : track.artists.map((artist : Record<string, any>) => artist.name).join(', '), album : track.album.name, id : track.id},
-        size : 1 + index/100, 
-        movementDamp : 0.3
-      }
-      trackSet.add(track.id)
-      angle += (4*Math.PI)/100
-    })
-    //Set correlations to 0
-    correlations.current = {}
-    /*const tracks = topTracks.data.tracks.map((track : Record<string, any>) => track.id)
-    getCombinations(tracks).forEach((combo : Array<string>)=> {
-      correlations.current[`${combo[0]}${combo[1]}`] = 0
-    })*/
+  //   var angle = 0
+  //   const radius = DISC_SIZE*100/(2*Math.PI)
+
+  //   topTracks.data.tracks.forEach((track : Record<string, any>, index : number)=> {
+  //     updatedDiscs[track.id] = {
+  //       x : Math.cos(angle)*radius, 
+  //       y : Math.sin(angle)*radius, 
+  //       image : Math.floor(Math.random()*images.length), 
+  //       velocity : {x : 0, y : 0}, 
+  //       acceleration : {x : 0, y : 0}, 
+  //       opacity : 0,
+  //       song : {name : track.name, author : track.artists.map((artist : Record<string, any>) => artist.name).join(', '), album : track.album.name, id : track.id},
+  //       size : 1 + index/100, 
+  //       movementDamp : 0.3
+  //     }
+  //     trackSet.add(track.id)
+  //     angle += (4*Math.PI)/100
+  //   })
+  //   //Set correlations to 0
+  //   correlations.current = {}
+  //   /*const tracks = topTracks.data.tracks.map((track : Record<string, any>) => track.id)
+  //   getCombinations(tracks).forEach((combo : Array<string>)=> {
+  //     correlations.current[`${combo[0]}${combo[1]}`] = 0
+  //   })*/
     
-    for(const playlist of playlists.data.playlists){
-      const response = await axios({
-        method: 'get',
-        url : `/api/playlist-tracks?id=${playlist.id}`
-      })
-      const tracks = response.data.items.filter((item : Record<string, any>) => item.track && trackSet.has(item.track.id)).map((item : Record<string, any>) => item.track.id)
-      console.log(playlist.name)
-      getCombinations(tracks).forEach(
-        (combo : Array<string>) => {
-          if(correlations.current[`${combo[0]}${combo[1]}`]){
-            correlations.current[`${combo[0]}${combo[1]}`] += 1
-          }else{
-            correlations.current[`${combo[0]}${combo[1]}`] = 1
-          }
-        }
-      )
-    }
+  //   for(const playlist of playlists.data.playlists){
+  //     const response = await axios({
+  //       method: 'get',
+  //       url : `/api/playlist-tracks?id=${playlist.id}`
+  //     })
+  //     const tracks = response.data.items.filter((item : Record<string, any>) => item.track && trackSet.has(item.track.id)).map((item : Record<string, any>) => item.track.id)
+  //     console.log(playlist.name)
+  //     getCombinations(tracks).forEach(
+  //       (combo : Array<string>) => {
+  //         if(correlations.current[`${combo[0]}${combo[1]}`]){
+  //           correlations.current[`${combo[0]}${combo[1]}`] += 1
+  //         }else{
+  //           correlations.current[`${combo[0]}${combo[1]}`] = 1
+  //         }
+  //       }
+  //     )
+  //   }
     
-    /*for(const [key, count] of Object.entries(correlations.current)){
-      if(count === 0){
-        delete correlations.current[key]
-      }
-    }*/
-    setDiscs(updatedDiscs)
-  }
+  //   /*for(const [key, count] of Object.entries(correlations.current)){
+  //     if(count === 0){
+  //       delete correlations.current[key]
+  //     }
+  //   }*/
+  //   setDiscs(updatedDiscs)
+  // }
   //useEffect(()=>{getConstellation()},[])
 
 
@@ -520,10 +532,13 @@ function Vinyls(){
         (response : Record<string, any>) => {
           
           
+          
           const tracks : Record<string, Song> = {}
           response.data.tracks.forEach((track : Record<string, any>)=>{
             tracks[track.id] = {name : track.name, author : track.artists.map((artist : Record<string, any>) => artist.name).join(', '), album : track.album.name, id : track.id}
           })
+
+          
 
           setDiscs(prev => {
             var updatedDisks = {...prev}
@@ -740,7 +755,7 @@ function Vinyls(){
           
           //Hooke's law
           if(correlations.current[`${combo[0]}${combo[1]}`]){
-            change = getXYDifference(correlations.current[`${combo[0]}${combo[1]}`]*(distanceAndAngle.distance-150)/100000, distanceAndAngle.angle)
+            change = getXYDifference((distanceAndAngle.distance-150)/100000, distanceAndAngle.angle) //correlations.current[`${combo[0]}${combo[1]}`]* don't multiply by correlation
             newAccelerationA.x += change.dx
             newAccelerationA.y += change.dy
             newAccelerationB.x -= change.dx
