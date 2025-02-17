@@ -11,10 +11,10 @@ import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 //https://coolors.co/cb3342-686963-8aa29e-3d5467-f1edee
 //https://coolors.co/8a4f7d-887880-88a096-bbab8b-ef8275
 
-const SongContext = createContext({value : {name : "", author : "", album : "", id : ""}, setValue : (val : Song | ((song: Song) => Song))=>{}})
+const SongContext = createContext({value : {name : "", author : "", album : "", id : "", play : false}, setValue : (val : Song | ((song: Song) => Song))=>{}})
 const PlayerContext = createContext({value: null, setValue : (prev : any) => {}, maxWidth : 0, setMaxWidth : (prev : number) => {}})
 
-type Song = {name : string, author : string, album : string, id : string}
+type Song = {name : string, author : string, album : string, id : string, play : boolean}
 
 //Math util
 function getCombinations(list : Array<any>) {
@@ -91,14 +91,17 @@ const SearchBar = ({boxWidth, growDown, light, placeholder, type, onClick, onCha
                 name : item.name, 
                 author : item.artists.map((artist : Record<string, any>) => artist.name).join(", "),
                 id : item.id,
-                album : item.album.name
+                album : item.album.name,
+                play : true
               }
             }
             return {
               name : item.name, 
               author : item.owner.display_name,
               id : item.id,
-              album : ""
+              album : "",
+              play : false
+
             }
           }
         ), timestamp)
@@ -284,8 +287,7 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
   }
 
   useEffect(() => {
-    
-    if(selectedSong.id !== ""){
+    if(selectedSong.id !== "" && selectedSong.play){
       if(deviceId !== ""){
         axios({
           method: 'put',
@@ -333,15 +335,22 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
           if(!info){
             return 
           }
-          const current_track = info.track_window.current_track
-          setSelectedSong(
-            (prev : Song) => {
-              if(prev.id === current_track.id){
-                return prev
+          //The player may not return the correct id of the track, use the Web API instead
+          axios({
+            method: 'get',
+            url: '/api/current-playing-track'
+          }).then((response : Record<string, any>) => {
+            const current_track = response.data.item
+            setSelectedSong(
+              (prev : Song) => {
+                if(prev.id === current_track.id){
+                  return prev
+                }
+                return {name : current_track.name, author : current_track.artists.map((artist : Record<string, any>)=>artist.name).join(", "), album : current_track.album.name, id : current_track.id, play : false}
               }
-              return {name : current_track.name, author : current_track.artists.map((artist : Record<string, any>)=>artist.name).join(", "), album : current_track.album.name, id : current_track.id}
-            }
-          )
+            )
+          })
+
         }))
 
         player.connect()
@@ -371,6 +380,7 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
 }
 
 type Disk = {x: number, y: number, image: number, velocity : {x : number, y : number}, acceleration : {x : number, y : number}, song : Song, opacity : number, size : number, movementDamp : number} 
+type Label = {name : string, opacity : number}
 type Correlation = {songa: string, songb: string, count: number}
 
 function Vinyls(){
@@ -379,10 +389,13 @@ function Vinyls(){
   const maxWidth = useContext(PlayerContext).maxWidth
 
   const [discs, setDiscs] = useState<Record<string, Disk>>({})
+  const [labels, setLabels] = useState<Record<string, Label>>({})
   const correlations = useRef<Record<string, number>>({})
+  const mappedSongs = useRef<Set<string>>(new Set())
   const focusedDisks = useRef<Set<string>>(new Set())
   const fadedDisks = useRef<Set<string>>(new Set())
-  
+  const fadedLabels = useRef<Set<string>>(new Set())
+
   const [stageDimensions, setStageDimensions] = useState({w: window.innerWidth, h : window.innerHeight})
   const animationRef = useRef(0)
   const [rotation, setRotation] = useState(0)
@@ -401,18 +414,8 @@ function Vinyls(){
   const mouseDown = useRef(false)
   const mouseStart = useRef({x:0, y:0})
   const cameraStart = useRef({x:0, y:0})
-
-  // axios({
-  //   method: 'get',
-  //   url: '/api/region-name',
-  //   params: {
-  //     tracks: response.data.tracks.map((track : Record<string, any>) => track.id)
-  //   }
-  // }).then(
-  //   response => {
-  //     console.log(response.data)
-  //   }
-  // )
+  
+  
 
   // async function getConstellation(){
   //   //Get playlists
@@ -522,6 +525,7 @@ function Vinyls(){
 
   useEffect(()=>{
     if(selectedSong.id !== ""){
+
       axios({
         method: 'get',
         url: '/api/neighbours',
@@ -531,18 +535,17 @@ function Vinyls(){
       }).then(
         (response : Record<string, any>) => {
           
-          
+
           
           const tracks : Record<string, Song> = {}
           response.data.tracks.forEach((track : Record<string, any>)=>{
-            tracks[track.id] = {name : track.name, author : track.artists.map((artist : Record<string, any>) => artist.name).join(', '), album : track.album.name, id : track.id}
+            tracks[track.id] = {name : track.name, author : track.artists.map((artist : Record<string, any>) => artist.name).join(', '), album : track.album.name, id : track.id, play : true}
           })
 
-          
+          const trackIds = response.data.tracks.map((track : Record<string, any>) => track.id)
 
           setDiscs(prev => {
             var updatedDisks = {...prev}
-            
             //Check if there is a link between currently displayed songs and new songs
             const neighbours : Array<Correlation> = response.data.neighbours 
             
@@ -558,9 +561,26 @@ function Vinyls(){
             if(!connected){
               correlations.current = {}
               updatedDisks = {}
+              mappedSongs.current = new Set()
+              setLabels({})
             }
-          
-            
+
+            //Add labels if some of the tracks are unlabeled
+            const unlabeledTracks = trackIds.reduce((acc : number, track : string) => acc + (mappedSongs.current.has(track) ? 0 : 1), 0)
+            if(neighbours.length > 0 && unlabeledTracks > 3){
+              trackIds.forEach((track : string) => mappedSongs.current.add(track))
+              axios({
+                method: 'get',
+                url: '/api/region-name',
+                params: {
+                  tracks: trackIds
+                }
+              }).then(response => {
+                console.log(response.data)
+                setLabels(prev => {return {...prev, [selectedSong.id]: {name : response.data.name, opacity : 1}}})
+              })
+            }
+
             if(!updatedDisks[selectedSong.id] && neighbours.length > 0){
               updatedDisks[selectedSong.id] = {
                 x : 0, 
@@ -577,9 +597,9 @@ function Vinyls(){
             focusedDisks.current = new Set()
             focusedDisks.current.add(selectedSong.id)
             if(updatedDisks[selectedSong.id]){
-              updatedDisks[selectedSong.id].movementDamp = 0.5
+              //updatedDisks[selectedSong.id].movementDamp = 0.5
             }
-
+            
             function getRandomDisk(spread : number, id : string){
               const spreadX = (Math.random()-0.5)*2 * spread //Radius of spread
               const spreadY = Math.sqrt(spread*spread-spreadX*spreadX)
@@ -631,6 +651,8 @@ function Vinyls(){
     };
   }, []);
 
+  
+
   useEffect(()=>{
     for (const [id, disc] of Object.entries(discs)) {
       if(getRenderedX(disc.x) < maxWidth + 64 + DISC_SIZE/2*zoom && getRenderedY(disc.y) < 160 + DISC_SIZE/2*zoom){
@@ -656,6 +678,7 @@ function Vinyls(){
         const zoomDivisor = 10
         return prev + (zoomTarget.current-prev)/zoomDivisor
       })
+      
       
       setDiscs(prev => {
         
@@ -795,7 +818,8 @@ function Vinyls(){
     return (y - camera.y)*zoom + stageDimensions.h/2 
   }
   const DISC_SIZE = 100
-  
+  const LABEL_OFFSET_X = 400 
+  const LABEL_OFFSET_Y = 200
   const ZOOM_MAX = 1.5
   const ZOOM_MIN = 0.3
   
@@ -873,8 +897,8 @@ function Vinyls(){
             Object.keys(correlations.current).map((id, index) => {
               const songA = id.slice(0, 22)
               const songB = id.slice(22)
-
-
+              const focused = focusedDisks.current.has(songA) || focusedDisks.current.has(songB)
+              
               return <Line
                 key={index}
                 points={[
@@ -883,8 +907,8 @@ function Vinyls(){
                   getRenderedX(discs[songB].x), 
                   getRenderedY(discs[songB].y)
                 ]} // (x1, y1, x2, y2)
-                stroke={"#f3f4f6"}
-                strokeWidth={focusedDisks.current.has(songA) || focusedDisks.current.has(songB) ? 4*zoom : 4*zoom} //Style based on focus?
+                stroke={focused ? "#eeeeee" : "#f5f5f5"}
+                strokeWidth={focused ? 5*zoom : 4*zoom} //Style based on focus?
                 lineCap="round"
                 lineJoin="round"
                 opacity={Math.min(discs[songA].opacity, discs[songB].opacity)}
@@ -948,12 +972,24 @@ function Vinyls(){
                   opacity={disc.opacity}
                 ></Text>
               </Group>)  
-              
-              
+
             })
           }
           {
-
+            Object.entries(labels).map(([id, label], index) => {
+              return <Text
+                key={index}
+                text={label.name}
+                x={getRenderedX(discs[id].x) - (LABEL_OFFSET_X)*zoom}           
+                y={getRenderedY(discs[id].y) - (LABEL_OFFSET_Y)*zoom}     
+                fontSize={64*zoom}
+                fontFamily="Noto Serif, Noto Sans JP, Noto Sans KR, Noto Sans TC"
+                ellipsis={true}
+                opacity={label.opacity}
+                globalCompositeOperation='difference'
+                fill={'#757575'}
+              ></Text>
+            })
           }
           </Layer>
         </Stage>}
@@ -974,7 +1010,7 @@ function Search(){
 
   return (
     <>
-      <SearchBar disable={false} defaultSearch={""} onChange={()=>{}} boxWidth={400} type="track" growDown={false} light={false} placeholder="Search by track or keyword" onClick={(data)=>{setSelectedSong(data)}}></SearchBar>
+      <SearchBar disable={false} defaultSearch={""} onChange={()=>{}} boxWidth={400} type="track" growDown={false} light={false} placeholder="Search by track" onClick={(data)=>{setSelectedSong(data)}}></SearchBar>
     </>
   )
 }
@@ -1001,8 +1037,8 @@ function Contribute(){
       }
     })
     setDisable(false)
-    //setShowThanks(true)
-    //setTimeout(()=>{setShowThanks(false)}, 1000)
+    setShowThanks(true)
+    setTimeout(()=>{setShowThanks(false)}, 1000)
   }
 
   return (
@@ -1037,6 +1073,7 @@ function Contribute(){
                     ))
                     setPlaylist(data)
                     setDefaultSearch(`${data.name} - ${data.author}`)
+                    
                   }
 
                   }></SearchBar>
@@ -1061,7 +1098,7 @@ function Contribute(){
                     <div className="flex items-center">
                       <button disabled={disable} onClick={contributeTracks} className={`mt-2 transition-color duration-300 border-2 p-2 rounded-md border-[#887880] cursor-pointer  ${disable ? "cursor-not-allowed text-[#887880]" : "text-white hover:border-white"}`}>Submit</button>
                       {disable && <div className="p-2"><SyncLoader color="#887880" loading={true} size={5}></SyncLoader></div>}
-                      {showThanks && <p className="p-2 text-white text-[#887880]">Submission accepted!</p>}
+                      {showThanks && <p className="mt-2 p-2 text-white text-[#887880]">Submission accepted!</p>}
                     </div>
                     <style>
                       {`
@@ -1092,7 +1129,7 @@ function Contribute(){
           </div>
         }
       </div>
-
+      
       <button onClick={()=>{
         setShowSearch(true) 
         setFadeIn(true)
@@ -1101,8 +1138,42 @@ function Contribute(){
   )
 }
 
+function Tutorial(){
+  const [showTutorial, setShowTutorial] = useState(false)
+  const [fadeIn, setFadeIn] = useState(false)
+
+
+  return <>
+  <div className={`z-50 duration-300 transition  ${fadeIn ? "opacity-100" : "opacity-0"}`}>
+        {showTutorial && 
+          <div className="top-0 left-0 absolute w-screen h-screen bg-white flex justify-center items-center">
+            <div style={{width: 600}} className="z-10 flex flex-col gap-2 text-gray-600">
+              <h1 className="text-3xl font-bold text-black">Atlas</h1>
+              <p>is a visual map of Spotify. It's a visualization of Spotify genres, songs and their relationships.</p>
+              <p>Songs are grouped together based on how 'correlated' they are. The way we determine this is very simple: if two songs appear in the same playlist, we say that they are correlated.</p>
+              <p>If songs frequently appear together, they are considered more correlated.</p>
+              <p>{"The playlists we use are sourced entirely from users like you. Feel free to submit your (public) playlists with the 'Contribute' button to help us explore any unexplored territory!"}</p>
+              <p className="text-gray-400 pt-2">Click anywhere to return to the map.</p>
+            </div>
+
+
+            <div onClick={()=>{
+              setFadeIn(false)
+              setTimeout(()=>setShowTutorial(false), 300)
+              }} className="top-0 left-0 w-full h-full absolute"></div>
+          </div>
+        }
+      </div>
+    <button onClick={()=>{
+      setShowTutorial(true)
+      setFadeIn(true)
+    }} className="z-10 bg-white transition-color duration-300 border-2 p-2 w-12 h-12 rounded-md text-gray-700 cursor-pointer hover:border-[#887880]">?</button>
+  </>
+}
+
+
 function Map({handleLogout} : {handleLogout : ()=>void}){
-  const [selectedSong, setSelectedSong] = useState<Song>({name : "", author : "", album : "", id : ""})    
+  const [selectedSong, setSelectedSong] = useState<Song>({name : "", author : "", album : "", id : "", play : false})    
   const [playerVolume, setPlayerVolume] = useState(50)
   const [savedPlayerVolume, setSavedPlayerVolume] = useState(50)
   const player : any = useContext(PlayerContext).value 
@@ -1184,8 +1255,7 @@ function Map({handleLogout} : {handleLogout : ()=>void}){
               }
               
             <Contribute></Contribute>
-            <button className="z-10 bg-white transition-color duration-300 border-2 p-2 w-12 h-12 rounded-md text-gray-700 cursor-pointer hover:border-[#887880]">?</button>
-
+            <Tutorial></Tutorial>
           </div>
         </div>
       </div>

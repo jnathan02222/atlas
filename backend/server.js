@@ -104,12 +104,16 @@ function getCombinations(list) {
   return result
 }
 
-// /api/search/playlist
+// /api/search/
 app.get('/api/search', async (req, res) => {
   try {
     const response = await spotifySearch(req.cookies['spotify_token'], req) 
+    if(req.query.type === "playlist"){
+      response.data.playlists.items = response.data.playlists.items.filter(playlist => playlist && playlist.public)
+    }
     res.json(response.data)
   }catch (error) {
+    //console.log(error)
     if(error.status === 401){
       for(var i = 0; i < 3; i++){ //Attempt 3 times
         try {
@@ -204,12 +208,15 @@ app.put('/api/contribute', async (req, res) => {
 // /api/neighbours
 app.get('/api/neighbours', async (req, res) => {
   const track_id = req.query.track_id
+  //console.log(track_id)
+
   const data = await db.any(`SELECT * FROM correlations WHERE songA = '${track_id}' OR songB = '${track_id}'`)
-    
+  //console.log(data)
   //Select all playlists that contain the song 
   //Get vectors for each playlist
   //K cluster
-  const neighbours = data.sort((a, b) => a.count - b.count).slice(0, 5)
+  //console.log(data.sort((a, b) => a.count - b.count).reverse())
+  const neighbours = data.sort((a, b) => a.count - b.count).reverse().slice(0, 5)
   const ids = [...neighbours.map((neighbour) => neighbour.songa !== track_id ? neighbour.songa : neighbour.songb), track_id]
 
   for(var i = 0; i < 3; i++){ //Attempt 3 times
@@ -266,8 +273,10 @@ app.get('/api/region-name', async (req, res) => {
     } 
   })
   
-  const bestPlaylist = (await db.one(`SELECT playlist FROM embeddings ORDER BY embedding <=> '[${centroids[maxClusterIndex].toString()}]' LIMIT 1`)).playlist
-  
+  const data = await db.one(`SELECT * FROM embeddings ORDER BY embedding <=> '[${centroids[maxClusterIndex].toString()}]' LIMIT 1`)
+  const bestPlaylist = data.playlist
+  const vector = data.embedding.slice(1, -1).split(',').map(Number).slice(0, 2)
+
   const response = await axios({
     method: 'get',
     url: `https://api.spotify.com/v1/playlists/${bestPlaylist}`,
@@ -275,7 +284,7 @@ app.get('/api/region-name', async (req, res) => {
       'Authorization': 'Bearer ' + await readGlobalSpotifyToken(),
     }
   })
-  res.json({name : response.data.name})
+  res.json({name : response.data.name, vector : vector})
 })  
 
 // /api/login-state
@@ -320,6 +329,25 @@ app.put('/api/play-track', (req, res) => {
   )
 })
 
+app.get('/api/current-playing-track', (req, res) => {
+  axios({
+    method: 'get',
+    url: `https://api.spotify.com/v1/me/player/currently-playing`,
+    headers: {
+      'Authorization': 'Bearer ' + req.cookies['spotify_token'],
+    }
+  }).then(
+    response => {
+      res.send(response.data)
+    }
+  ).catch(
+    error => {
+      console.log(error)
+      //bruh
+    }
+  )
+})
+
 app.get('/api/callback', (req, res) => {
   var code = req.query.code || null;
   var state = req.query.state || null;
@@ -353,7 +381,7 @@ app.get('/api/callback', (req, res) => {
 
 app.get('/api/login', (req, res) => {
   var state = generateRandomString(16);
-  var scope = 'user-read-private user-read-email streaming playlist-read-private user-top-read';
+  var scope = 'user-read-private user-read-email streaming playlist-read-private user-top-read user-read-currently-playing';
 
   res.redirect('https://accounts.spotify.com/authorize?' +
     new URLSearchParams({
@@ -409,8 +437,6 @@ app.get('/api/user-top-tracks', async (req, res) => {
   let result = response.data.items
   res.json({tracks : result})
 })
-
-
 
 app.listen(8888, ()=>{
   console.log("Listening on 8888")
