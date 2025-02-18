@@ -385,7 +385,7 @@ type Correlation = {songa: string, songb: string, count: number}
 
 function Vinyls(){
   const DISC_SIZE = 100
-  const LABEL_WIDTH = 1000
+  const LABEL_WIDTH = 500
   const LABEL_HEIGHT = 48
   //const LABEL_OFFSET_X = 400 
   //const LABEL_OFFSET_Y = 200
@@ -784,7 +784,7 @@ function Vinyls(){
           const discB = updatedDiscs[combo[1]]
           var distanceAndAngle = getDistanceAndAngle(discA.x, discA.y, discB.x, discB.y)
           
-          const minDistance = combo[0].includes("_") ? 300 : 100 + combo[1].includes("_") ? 300 : 100
+          const minDistance = combo[0].includes("_") ? LABEL_WIDTH/2 : 100 + combo[1].includes("_") ? LABEL_WIDTH/2 : 100
           if(distanceAndAngle.distance < minDistance){
             const difference = getXYDifference(minDistance-distanceAndAngle.distance, distanceAndAngle.angle)
             discA.x -= difference.dx/2
@@ -981,11 +981,11 @@ function Vinyls(){
                 <Group key={index}>
                   <Text
                     text={disc.song.name}
-                    x={getRenderedX(disc.x-(LABEL_WIDTH/2))}           
+                    x={getRenderedX(disc.x-(LABEL_WIDTH-100)/2)}           
                     y={getRenderedY(disc.y)}  
                     fontSize={LABEL_HEIGHT*zoom}
                     fontFamily="Noto Serif, Noto Sans JP, Noto Sans KR, Noto Sans TC"
-                    width={LABEL_WIDTH*zoom}
+                    width={(LABEL_WIDTH-100)*zoom}
                     ellipsis={true}
                     wrap="none"
                     opacity={disc.opacity}
