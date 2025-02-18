@@ -394,7 +394,6 @@ function Vinyls(){
   const mappedSongs = useRef<Set<string>>(new Set())
   const focusedDisks = useRef<Set<string>>(new Set())
   const fadedDisks = useRef<Set<string>>(new Set())
-  const fadedLabels = useRef<Set<string>>(new Set())
 
   const [stageDimensions, setStageDimensions] = useState({w: window.innerWidth, h : window.innerHeight})
   const animationRef = useRef(0)
@@ -576,7 +575,6 @@ function Vinyls(){
                   tracks: trackIds
                 }
               }).then(response => {
-                console.log(response.data)
                 setLabels(prev => {return {...prev, [selectedSong.id]: {name : response.data.name, opacity : 1}}})
               })
             }
