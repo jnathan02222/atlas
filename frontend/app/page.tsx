@@ -664,7 +664,10 @@ function Vinyls(){
 
   useEffect(()=>{
     for (const [id, disc] of Object.entries(discs)) {
-      if(getRenderedX(disc.x) < maxWidth + 64 + DISC_SIZE/2*zoom && getRenderedY(disc.y) < 160 + DISC_SIZE/2*zoom){
+      const isLabel = id.includes("_")
+      const x = isLabel ? disc.x - LABEL_WIDTH/2: disc.x 
+      const y = isLabel ? disc.y - LABEL_HEIGHT/2: disc.y 
+      if(getRenderedX(x) < maxWidth + 64 + DISC_SIZE/2*zoom && getRenderedY(y) < 160 + DISC_SIZE/2*zoom){
         fadedDisks.current.add(id)
       }else{
         fadedDisks.current.delete(id)
