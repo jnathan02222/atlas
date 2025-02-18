@@ -343,7 +343,7 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
             const current_track = response.data.item
             setSelectedSong(
               (prev : Song) => {
-                if(prev.id === current_track.id){
+                if(!prev || !current_track || prev.id === current_track.id){
                   return prev
                 }
                 return {name : current_track.name, author : current_track.artists.map((artist : Record<string, any>)=>artist.name).join(", "), album : current_track.album.name, id : current_track.id, play : false}
