@@ -380,16 +380,23 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
 }
 
 type Disk = {x: number, y: number, image: number, velocity : {x : number, y : number}, acceleration : {x : number, y : number}, song : Song, opacity : number, size : number, movementDamp : number} 
-type Label = {name : string, opacity : number}
+//type Label = {name : string, opacity : number}
 type Correlation = {songa: string, songb: string, count: number}
 
 function Vinyls(){
+  const DISC_SIZE = 100
+  const LABEL_WIDTH = 1000
+  const LABEL_HEIGHT = 48
+  //const LABEL_OFFSET_X = 400 
+  //const LABEL_OFFSET_Y = 200
+  const ZOOM_MAX = 1.5
+  const ZOOM_MIN = 0.3
+  
   const selectedSong = useContext(SongContext).value
   const setSelectedSong = useContext(SongContext).setValue
   const maxWidth = useContext(PlayerContext).maxWidth
 
   const [discs, setDiscs] = useState<Record<string, Disk>>({})
-  const [labels, setLabels] = useState<Record<string, Label>>({})
   const correlations = useRef<Record<string, number>>({})
   const mappedSongs = useRef<Set<string>>(new Set())
   const focusedDisks = useRef<Set<string>>(new Set())
@@ -414,8 +421,6 @@ function Vinyls(){
   const mouseStart = useRef({x:0, y:0})
   const cameraStart = useRef({x:0, y:0})
   
-  
-
   // async function getConstellation(){
   //   //Get playlists
   //   const playlists : Record<string, any> = await axios({
@@ -522,117 +527,123 @@ function Vinyls(){
     }
   },[zoom])
 
+  async function updateMap(selectedSong : Song){
+    const response : Record<string, any> = await axios({
+      method: 'get',
+      url: '/api/neighbours',
+      params: {
+        track_id: selectedSong.id
+      }
+    })
+  
+    const neighbours : Array<Correlation> = response.data.neighbours 
+
+    const tracks : Record<string, Song> = {}
+    response.data.tracks.forEach((track : Record<string, any>)=>{
+      tracks[track.id] = {name : track.name, author : track.artists.map((artist : Record<string, any>) => artist.name).join(', '), album : track.album.name, id : track.id, play : true}
+    })
+
+    const trackIds = response.data.tracks.map((track : Record<string, any>) => track.id)
+    //Add labels if some of the tracks are unlabeled
+    //console.log(mappedSongs.current)
+    const unlabeledTracks = trackIds.reduce((acc : number, track : string) => acc + (mappedSongs.current.has(track) ? 0 : 1), 0)
+    var label : string = ""
+    if(neighbours.length > 0 && unlabeledTracks > 4){
+
+      const response : Record<string, any> = await axios({
+        method: 'get',
+        url: '/api/region-name',
+        params: {
+          tracks: trackIds
+        }
+      })
+      label = response.data.name
+    }
+
+    setDiscs(prev => {
+      var updatedDisks = {...prev}
+      //Check if there is a link between currently displayed songs and new songs
+      
+      var connected = false
+      for(const neighbour of neighbours){
+        if(prev[neighbour.songa] || prev[neighbour.songb]){
+          connected = true 
+          break
+        }
+      }
+
+      //If not clear data structures
+      if(!connected){
+        correlations.current = {}
+        updatedDisks = {}
+        mappedSongs.current = new Set()
+      }
+
+      
+
+      if(!updatedDisks[selectedSong.id] && neighbours.length > 0){
+        updatedDisks[selectedSong.id] = {
+          x : 0, 
+          y : 0, 
+          image : Math.floor(Math.random()*images.length), 
+          velocity : {x : 0, y : 0}, 
+          acceleration : {x : 0, y : 0}, 
+          opacity : 0,
+          song : tracks[selectedSong.id],
+          size : 1,
+          movementDamp : 1
+        }
+      }
+      focusedDisks.current = new Set()
+      focusedDisks.current.add(selectedSong.id)
+      if(updatedDisks[selectedSong.id]){
+        //updatedDisks[selectedSong.id].movementDamp = 0.5
+      }
+      
+      function getRandomDisk(spread : number, song : Song){
+        const spreadX = (Math.random()-0.5)*2 * spread //Radius of spread
+        const spreadY = Math.sqrt(spread*spread-spreadX*spreadX)
+        return {
+          x : updatedDisks[selectedSong.id].x + spreadX, 
+          y : updatedDisks[selectedSong.id].y + (Math.random() > 0.5 ? spreadY : -spreadY), 
+          image : Math.floor(Math.random()*images.length),
+          velocity : {x : 0, y : 0}, 
+          acceleration : {x : 0, y : 0}, 
+          opacity : 0,
+          song : song,
+          size : 1,
+          movementDamp : 1
+        }
+      }
+
+      if(label !== ""){
+        const labelTag = `_${selectedSong.id}`
+        updatedDisks[labelTag] = getRandomDisk(150, {name : label, album : "", author : "", id : "", play : false})
+        correlations.current[`${selectedSong.id}:${labelTag}`] = 1
+        trackIds.forEach((track : string) => mappedSongs.current.add(track))
+
+      }
+      
+
+      for(const neighbour of neighbours){
+        if(!updatedDisks[neighbour.songa]){
+          updatedDisks[neighbour.songa] = getRandomDisk(150, tracks[neighbour.songa])
+        }
+        if(!updatedDisks[neighbour.songb]){
+          updatedDisks[neighbour.songb] = getRandomDisk(150, tracks[neighbour.songb])
+        }
+        if(!correlations.current[`${neighbour.songa}:${neighbour.songb}`]){
+          correlations.current[`${neighbour.songa}:${neighbour.songb}`] = neighbour.count
+        }
+      }
+      return updatedDisks
+    })
+  }
+
   useEffect(()=>{
     if(selectedSong.id !== ""){
-
-      axios({
-        method: 'get',
-        url: '/api/neighbours',
-        params: {
-          track_id: selectedSong.id
-        }
-      }).then(
-        (response : Record<string, any>) => {
-          
-
-          
-          const tracks : Record<string, Song> = {}
-          response.data.tracks.forEach((track : Record<string, any>)=>{
-            tracks[track.id] = {name : track.name, author : track.artists.map((artist : Record<string, any>) => artist.name).join(', '), album : track.album.name, id : track.id, play : true}
-          })
-
-          const trackIds = response.data.tracks.map((track : Record<string, any>) => track.id)
-
-          setDiscs(prev => {
-            var updatedDisks = {...prev}
-            //Check if there is a link between currently displayed songs and new songs
-            const neighbours : Array<Correlation> = response.data.neighbours 
-            
-            var connected = false
-            for(const neighbour of neighbours){
-              if(prev[neighbour.songa] || prev[neighbour.songb]){
-                connected = true 
-                break
-              }
-            }
-
-            //If not clear data structures
-            if(!connected){
-              correlations.current = {}
-              updatedDisks = {}
-              mappedSongs.current = new Set()
-              setLabels({})
-            }
-
-            //Add labels if some of the tracks are unlabeled
-            const unlabeledTracks = trackIds.reduce((acc : number, track : string) => acc + (mappedSongs.current.has(track) ? 0 : 1), 0)
-            if(neighbours.length > 0 && unlabeledTracks > 3){
-              trackIds.forEach((track : string) => mappedSongs.current.add(track))
-              axios({
-                method: 'get',
-                url: '/api/region-name',
-                params: {
-                  tracks: trackIds
-                }
-              }).then(response => {
-                setLabels(prev => {return {...prev, [selectedSong.id]: {name : response.data.name, opacity : 1}}})
-              })
-            }
-
-            if(!updatedDisks[selectedSong.id] && neighbours.length > 0){
-              updatedDisks[selectedSong.id] = {
-                x : 0, 
-                y : 0, 
-                image : Math.floor(Math.random()*images.length), 
-                velocity : {x : 0, y : 0}, 
-                acceleration : {x : 0, y : 0}, 
-                opacity : 0,
-                song : tracks[selectedSong.id],
-                size : 1,
-                movementDamp : 1
-              }
-            }
-            focusedDisks.current = new Set()
-            focusedDisks.current.add(selectedSong.id)
-            if(updatedDisks[selectedSong.id]){
-              //updatedDisks[selectedSong.id].movementDamp = 0.5
-            }
-            
-            function getRandomDisk(spread : number, id : string){
-              const spreadX = (Math.random()-0.5)*2 * spread //Radius of spread
-              const spreadY = Math.sqrt(spread*spread-spreadX*spreadX)
-              return {
-                x : updatedDisks[selectedSong.id].x + spreadX, 
-                y : updatedDisks[selectedSong.id].y + (Math.random() > 0.5 ? spreadY : -spreadY), 
-                image : Math.floor(Math.random()*images.length),
-                velocity : {x : 0, y : 0}, 
-                acceleration : {x : 0, y : 0}, 
-                opacity : 0,
-                song : tracks[id],
-                size : 1,
-                movementDamp : 1
-              }
-            }
-
-            for(const neighbour of neighbours){
-              if(!updatedDisks[neighbour.songa]){
-                updatedDisks[neighbour.songa] = getRandomDisk(150, neighbour.songa)
-              }
-              if(!updatedDisks[neighbour.songb]){
-                updatedDisks[neighbour.songb] = getRandomDisk(150, neighbour.songb)
-              }
-              if(!correlations.current[`${neighbour.songa}${neighbour.songb}`]){
-                correlations.current[`${neighbour.songa}${neighbour.songb}`] = neighbour.count
-              }
-            }
-            return updatedDisks
-          })
-
-
-        }
-      )
+      updateMap(selectedSong)
     }
-    
   }, [selectedSong])
 
   useEffect(() => {
@@ -661,6 +672,40 @@ function Vinyls(){
     }
   }, [zoom, camera, maxWidth])
 
+
+  function pointInRectangle(point : {x : number, y : number}, rectPoint : {x : number, y : number}, width : number, height : number, padding : number){
+    if(rectPoint.x - padding < point.x && point.x < rectPoint.x + width + padding){
+      if(rectPoint.y - padding < point.y && point.y < rectPoint.y + height + padding){
+        return true
+      }
+    }
+    return false
+  }
+
+  function collidedRect(updatedDiscs : Record<string, Disk>, combo : Array<string>){
+    const discA = updatedDiscs[combo[0]]
+    const discB = updatedDiscs[combo[1]]
+    if(combo[0].includes("_")){
+      if(combo[1].includes("_")){
+        for(const x of [discA.x, discA.x + LABEL_WIDTH]){
+          for(const y of [discA.y, discA.y + LABEL_HEIGHT]){
+            if(pointInRectangle({x : x, y : y}, {x : discB.x, y : discB.y}, LABEL_WIDTH, LABEL_HEIGHT, 0)){
+              return true
+            }
+          }
+        }
+      }else{
+        const padding = 200*discB.size/2
+        return pointInRectangle({x : discB.x, y : discB.y}, {x : discA.x, y : discA.y}, LABEL_WIDTH, LABEL_HEIGHT, padding)
+      }
+    }else{
+      if(combo[1].includes("_")){
+        const padding = 200*discB.size/2
+        return pointInRectangle({x : discA.x, y : discA.y}, {x : discB.x, y : discB.y}, LABEL_WIDTH, LABEL_HEIGHT, padding)
+      }
+    }
+    return false
+  }
   useEffect(()=>{
     cameraLocked.current = true
 
@@ -739,7 +784,7 @@ function Vinyls(){
           const discB = updatedDiscs[combo[1]]
           var distanceAndAngle = getDistanceAndAngle(discA.x, discA.y, discB.x, discB.y)
           
-          const minDistance = 200
+          const minDistance = combo[0].includes("_") ? 300 : 100 + combo[1].includes("_") ? 300 : 100
           if(distanceAndAngle.distance < minDistance){
             const difference = getXYDifference(minDistance-distanceAndAngle.distance, distanceAndAngle.angle)
             discA.x -= difference.dx/2
@@ -747,7 +792,6 @@ function Vinyls(){
             discB.x += difference.dx/2
             discB.y += difference.dy/2
             /*if(discA.movementDamp === discB.movementDamp){
-              
             }else if(discA.movementDamp > discB.movementDamp){
               //discA.movementDamp += 0.0005
               discA.x -= difference.dx
@@ -759,6 +803,9 @@ function Vinyls(){
             }*/
             distanceAndAngle = getDistanceAndAngle(discA.x, discA.y, discB.x, discB.y)
           }
+          
+
+
 
           var force = 20/(distanceAndAngle.distance*distanceAndAngle.distance)
           if(distanceAndAngle.distance === 0){ //Prevent infinite force
@@ -775,7 +822,7 @@ function Vinyls(){
           newAccelerationB.y += change.dy
           
           //Hooke's law
-          if(correlations.current[`${combo[0]}${combo[1]}`]){
+          if(correlations.current[`${combo[0]}:${combo[1]}`]){
             change = getXYDifference((distanceAndAngle.distance-150)/100000, distanceAndAngle.angle) //correlations.current[`${combo[0]}${combo[1]}`]* don't multiply by correlation
             newAccelerationA.x += change.dx
             newAccelerationA.y += change.dy
@@ -815,11 +862,6 @@ function Vinyls(){
   function getRenderedY(y : number){
     return (y - camera.y)*zoom + stageDimensions.h/2 
   }
-  const DISC_SIZE = 100
-  const LABEL_OFFSET_X = 400 
-  const LABEL_OFFSET_Y = 200
-  const ZOOM_MAX = 1.5
-  const ZOOM_MIN = 0.3
   
   /*const keyPressed = useRef(false)
   function handleKeyDown(e : KeyboardEvent){
@@ -892,9 +934,8 @@ function Vinyls(){
         <Stage width={stageDimensions.w} height={stageDimensions.h} >
           <Layer>
           {
-            Object.keys(correlations.current).map((id, index) => {
-              const songA = id.slice(0, 22)
-              const songB = id.slice(22)
+            Object.keys(correlations.current).filter(id => !id.includes("_")).map((id, index) => {
+              const [songA, songB] = id.split(":")
               const focused = focusedDisks.current.has(songA) || focusedDisks.current.has(songB)
               
               return <Line
@@ -915,7 +956,7 @@ function Vinyls(){
           }
           {
             Object.entries(discs).map(([id, disc], index) => {
-              return <Image
+              return (!id.includes("_") ? <Image
                   key={index}
                   image={images[disc.image]}
                   x={getRenderedX(disc.x)}           
@@ -935,11 +976,30 @@ function Vinyls(){
                   onMouseEnter={()=>{focusedDisks.current.add(id)}}
                   onMouseLeave={()=>{if(id!==selectedSong.id)focusedDisks.current.delete(id)}}
                   onClick={()=>{setSelectedSong(disc.song)}}
-                />
+                /> 
+                :
+                <Group key={index}>
+                  <Text
+                    text={disc.song.name}
+                    x={getRenderedX(disc.x-(LABEL_WIDTH/2))}           
+                    y={getRenderedY(disc.y)}  
+                    fontSize={LABEL_HEIGHT*zoom}
+                    fontFamily="Noto Serif, Noto Sans JP, Noto Sans KR, Noto Sans TC"
+                    width={LABEL_WIDTH*zoom}
+                    ellipsis={true}
+                    wrap="none"
+                    opacity={disc.opacity}
+                    align="center"
+                    fill={'#757575'}
+                  ></Text>
+                   
+                </Group>
+                
+              )
             })
           }
           {
-            Object.entries(discs).map(([id, disc], index) => {
+            Object.entries(discs).filter(([id, disc]) => !id.includes("_")).map(([id, disc], index) => {
               return (<Group key={index} 
 >
                 <Text
@@ -971,22 +1031,6 @@ function Vinyls(){
                 ></Text>
               </Group>)  
 
-            })
-          }
-          {
-            Object.entries(labels).map(([id, label], index) => {
-              return <Text
-                key={index}
-                text={label.name}
-                x={getRenderedX(discs[id].x) - (LABEL_OFFSET_X)*zoom}           
-                y={getRenderedY(discs[id].y) - (LABEL_OFFSET_Y)*zoom}     
-                fontSize={64*zoom}
-                fontFamily="Noto Serif, Noto Sans JP, Noto Sans KR, Noto Sans TC"
-                ellipsis={true}
-                opacity={label.opacity}
-                globalCompositeOperation='difference'
-                fill={'#757575'}
-              ></Text>
             })
           }
           </Layer>
@@ -1174,6 +1218,8 @@ function Map({handleLogout} : {handleLogout : ()=>void}){
   const [selectedSong, setSelectedSong] = useState<Song>({name : "", author : "", album : "", id : "", play : false})    
   const [playerVolume, setPlayerVolume] = useState(50)
   const [savedPlayerVolume, setSavedPlayerVolume] = useState(50)
+
+
   const player : any = useContext(PlayerContext).value 
 
   return (
