@@ -16,7 +16,7 @@ const db = pgp({
   database: 'music_db',         
   user: 'postgres',           
   password: process.env.DB_PASSWORD,   
-  ssl: { rejectUnauthorized: false }
+  //ssl: { rejectUnauthorized: false }
 })
 
 const { manyKMeansWithSilhouette } = require('clustering')
@@ -420,8 +420,19 @@ app.get('/api/login', (req, res) => {
 //   res.json({playlists: result})
 // })
 
-app.get('/api/user-top-tracks', async (req, res) => {
-  var response = await axios({
+app.post('/api/constellation', async (req, res) => {
+  //Get user id  
+  var profileRequest = await axios({
+    method: 'get',
+    url : 'https://api.spotify.com/v1/me/',
+    headers: {
+      'Authorization': 'Bearer ' + req.cookies['spotify_token'],
+    }
+  })
+  const userID = profileRequest.id
+
+  //Get tracks and store in database
+  var trackRequest = await axios({
     method: 'get',
     url : 'https://api.spotify.com/v1/me/top/tracks',
     headers: {
@@ -431,11 +442,19 @@ app.get('/api/user-top-tracks', async (req, res) => {
       offset: 0, 
       limit: 50,
       time_range: 'long_term'
-
     }
   })
-  let result = response.data.items
-  res.json({tracks : result})
+  const topTracks = trackRequest.data.items.map(track => track.id)
+  await db.none(`DELETE FROM toptracks WHERE id = '${userID}'`)
+  await Promise.all(topTracks.map(async (trackId)=>{
+    await db.none(`INSERT INTO toptracks VALUES('${userID}','${trackId}')`)
+  }))
+  res.json({success : true})
+})
+
+app.get('/api/constellation', async (req, res) => {
+  const topTracks = (await db.any(`SELECT song FROM toptracks WHERE id = '${req.query.user}'`)).map(data => data.song)
+  res.json({tracks : topTracks})
 })
 
 app.listen(8888, ()=>{

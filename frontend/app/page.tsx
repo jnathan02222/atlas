@@ -1,12 +1,12 @@
 'use client'
-import { useEffect, useState, useRef, memo, createContext, useContext } from "react"
+import { useEffect, useState, useRef, createContext, useContext } from "react"
 import axios from "axios"
 import { SyncLoader } from 'react-spinners'
-import { Stage, Layer, Image, Line, Text, Group } from 'react-konva';
-import useImage from 'use-image';
-import Slider from '@mui/material/Slider';
-import VolumeUpIcon from '@mui/icons-material/VolumeUp';
-import VolumeOffIcon from '@mui/icons-material/VolumeOff';
+import { Stage, Layer, Image, Line, Text, Group } from 'react-konva'
+import useImage from 'use-image'
+import Slider from '@mui/material/Slider'
+import VolumeUpIcon from '@mui/icons-material/VolumeUp'
+import VolumeOffIcon from '@mui/icons-material/VolumeOff'
 
 //https://coolors.co/cb3342-686963-8aa29e-3d5467-f1edee
 //https://coolors.co/8a4f7d-887880-88a096-bbab8b-ef8275
@@ -1061,6 +1061,7 @@ function Search(){
 }
 
 function Contribute(){
+  const setSelectedSong = useContext(SongContext).setValue
   const [showSearch, setShowSearch] = useState(false)
   const [fadeIn, setFadeIn] = useState(false)
 
@@ -1081,6 +1082,8 @@ function Contribute(){
         playlist: playlist
       }
     })
+    //Update song so that the map updates
+    setSelectedSong((prev : Song) => {return {...prev}})
     setDisable(false)
     setShowThanks(true)
     setTimeout(()=>{setShowThanks(false)}, 1000)
@@ -1186,14 +1189,14 @@ function Contribute(){
 function Tutorial(){
   const [showTutorial, setShowTutorial] = useState(false)
   const [fadeIn, setFadeIn] = useState(false)
-
+  
 
   return <>
-  <div className={`z-50 duration-300 transition  ${fadeIn ? "opacity-100" : "opacity-0"}`}>
+  <div className={`z-50 duration-300 transition  ${fadeIn ? "opacity-80" : "opacity-0"}`}>
         {showTutorial && 
-          <div className="top-0 left-0 absolute w-screen h-screen bg-white flex justify-center items-center">
-            <div style={{width: 600}} className="z-10 flex flex-col gap-2 text-gray-600">
-              <h1 className="text-3xl font-bold text-black">Atlas</h1>
+          <div className="top-0 left-0 absolute w-screen h-screen bg-black flex justify-center items-center">
+            <div style={{width: 600}} className="flex flex-col gap-2 text-gray-300">
+              <h1 className="text-3xl font-bold text-white">Atlas</h1>
               <p>is a visual map of Spotify. It's a visualization of Spotify genres, songs and their relationships.</p>
               <p>Songs are grouped together based on how 'correlated' they are. The way we determine this is very simple: if two songs appear in the same playlist, we say that they are correlated.</p>
               <p>If songs frequently appear together, they are considered more correlated.</p>
@@ -1217,7 +1220,7 @@ function Tutorial(){
 }
 
 
-function Map({handleLogout} : {handleLogout : ()=>void}){
+function Map({loggedIn, handleLogout} : {loggedIn : boolean, handleLogout : ()=>void}){
   const [selectedSong, setSelectedSong] = useState<Song>({name : "", author : "", album : "", id : "", play : false})    
   const [playerVolume, setPlayerVolume] = useState(50)
   const [savedPlayerVolume, setSavedPlayerVolume] = useState(50)
@@ -1229,14 +1232,16 @@ function Map({handleLogout} : {handleLogout : ()=>void}){
     <SongContext.Provider value={{value : selectedSong, setValue : setSelectedSong}}>
       <div className="w-screen h-screen flex flex-col justify-between p-16">
         <div className="flex justify-between items-start">
-          <Player ></Player>
+          <Player></Player>
           <button onClick={handleLogout} className="bg-white transition-color duration-300 border-2 p-2 h-12 rounded-md text-gray-700 cursor-pointer hover:border-[#887880] z-10">Log Out</button>
-
         </div>
         <Vinyls></Vinyls>
         <div className="flex justify-between items-end">
           <div className="flex gap-1 items-end">
             <Search></Search>
+            {loggedIn && <button className="z-10 bg-white transition-color duration-300 border-2 p-2 w-12 h-12 rounded-md text-gray-700 cursor-pointer hover:border-[#887880]" title="Get your Spotify Constellation!">
+              <img src="/noun-constellation-7549423.svg"></img>  
+            </button>}
           </div>
           <div className="flex gap-1 items-center"> 
             {<div className={` duration-500 transition flex items-center gap-2 ${player ? "" : "opacity-0"}`}> 
@@ -1327,20 +1332,6 @@ export default function App() {
         if(response.data.logged_in){
           signIn()
           setLoggedIn(true)
-          axios({
-      method: 'get',
-      url: '/api/login-state'
-    }).then(
-      response => {
-        if(response.data.logged_in){
-          signIn()
-          setLoggedIn(true)
-          
-          
-        }
-      }
-    )
-
         }
       }
     )
@@ -1369,7 +1360,8 @@ export default function App() {
 
             document.cookie = `spotify_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`
 
-            }}></Map> /**/} 
+            }}
+            loggedIn={loggedIn}></Map> /**/} 
         </div>
       </div>
     </PlayerContext.Provider>
