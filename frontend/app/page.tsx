@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef, createContext, useContext } from "react"
 import axios from "axios"
 import { SyncLoader } from 'react-spinners'
-import { Stage, Layer, Image, Line, Text, Group } from 'react-konva'
+import { Stage, Layer, Image, Line, Text, Group, Star, Circle } from 'react-konva'
 import useImage from 'use-image'
 import Slider from '@mui/material/Slider'
 import VolumeUpIcon from '@mui/icons-material/VolumeUp'
@@ -135,7 +135,7 @@ const SearchBar = ({boxWidth, growDown, light, placeholder, type, onClick, onCha
   return (
     <div className="z-10">
       {!growDown && results()}
-      <input disabled={disable} value={query} onChange={searchQuery} style={{width: boxWidth, height: 48}} placeholder={placeholder} className={` ${light ? `transition bg-transparent duration-300 border-2 p-2 rounded-md  border-[#887880]  focus:outline-none ${disable ? "text-[#887880] cursor-not-allowed" : "hover:border-white focus:border-white text-white"}` : "transition-color duration-300 border-2 p-2 rounded-md text-gray-700 w-96 hover:border-[#887880] focus:border-[#887880] focus:outline-none"}`}></input>
+      <input disabled={disable} value={query} onChange={searchQuery} style={{width: boxWidth, height: 48}} placeholder={placeholder} className={` ${light ? `transition bg-black duration-300 border-2 p-2 rounded-md  border-[#887880]  focus:outline-none ${disable ? "text-[#887880] cursor-not-allowed" : "hover:border-white focus:border-white text-white"}` : "transition-colors duration-300 border-2 p-2 rounded-md text-gray-700 w-96 hover:border-[#887880] focus:border-[#887880] focus:outline-none"}`}></input>
       {growDown && results()}
     </div>
   )
@@ -158,8 +158,8 @@ function Home({signInHandler} : {signInHandler : ()=> void}){
         <img src="/Full_Logo_Black_RGB.svg" draggable="false" className="h-6"></img>
         <h1 className="text-black text-8xl">Atlas</h1>
         <div className="flex">
-          <a href="/api/login" className="transition-color duration-300 hover:border-[#887880] border-2 p-2 mt-2 rounded-md text-gray-700  cursor-pointer" >Sign In</a>
-          <button onClick={signInHandler} className="transition-color duration-300 hover:border-[#887880] border-2 p-2 ml-2 mt-2 rounded-md text-gray-700  cursor-pointer">Guest</button>
+          <a href="/api/login" className="transition-colors duration-300 hover:border-[#887880] border-2 p-2 mt-2 rounded-md text-gray-700  cursor-pointer" >Sign In</a>
+          <button onClick={signInHandler} className="transition-colors duration-300 hover:border-[#887880] border-2 p-2 ml-2 mt-2 rounded-md text-gray-700  cursor-pointer">Guest</button>
         </div>
 
       </div>
@@ -167,7 +167,7 @@ function Home({signInHandler} : {signInHandler : ()=> void}){
   )
 }
 
-function Marquee({marqueeWidth, edgeWidth, height, endPause, selectedSong, children} : {marqueeWidth : number, height: number, edgeWidth : number, endPause : number, selectedSong : Song, children : React.ReactNode }){
+function Marquee({marqueeWidth, edgeWidth, height, endPause, selectedSong, children, darkMode} : {marqueeWidth : number, height: number, edgeWidth : number, endPause : number, selectedSong : Song, children : React.ReactNode, darkMode : boolean }){
   const [position, setPosition] = useState(edgeWidth)
   const animationId = useRef<number>(0)
   const sliderRef = useRef<HTMLHeadingElement>(null)
@@ -213,16 +213,16 @@ function Marquee({marqueeWidth, edgeWidth, height, endPause, selectedSong, child
 
   return (
     <div className={`flex`} style={{ transform: `translateX(${-edgeWidth*2}px)` }}>
-      <div style={{width: edgeWidth, transform: `translateX(${edgeWidth}px)`}} className={` ${showSide ? "bg-gradient-to-l from-transparent via-white to-white" : ""} z-10 `}></div>
+      <div style={{width: edgeWidth, transform: `translateX(${edgeWidth}px)`}} className={` ${showSide ? `transition-all duration-300 bg-gradient-to-l from-transparent ${darkMode ? "via-black to-black" : "via-white to-white"}` : ""} z-10 `}></div>
       <div className={`text-nowrap overflow-x-hidden`} style={{width: marqueeWidth, height: height}}> 
         <div ref={sliderRef} className="w-fit" style={{ transform: `translateX(${position}px)` }}>{children}</div>
       </div>
-      <div style={{width: edgeWidth, transform: `translateX(${-edgeWidth}px)`}} className={`${showSide ? "bg-gradient-to-r from-transparent via-white to-white" : ""}`}></div>
+      <div style={{width: edgeWidth, transform: `translateX(${-edgeWidth}px)`}} className={`${showSide ? `transition-all duration-300 bg-gradient-to-r from-transparent ${darkMode ? "via-black to-black" : "via-white to-white"}` : ""}`}></div>
     </div>
   )
 }
 
-function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 112, height: 112}}></div>
+function Player({darkMode} : {darkMode : boolean}){  //<div className="bg-black mr-5 rounded-sm" style={{width: 112, height: 112}}></div>
   const selectedSong = useContext(SongContext).value
   const setSelectedSong = useContext(SongContext).setValue
 
@@ -332,7 +332,7 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
         })
 
         player.addListener('player_state_changed', ((info : Record<string, any>) => {
-          if(!info){
+          if(!info || info.paused){
             return 
           }
           //The player may not return the correct id of the track, use the Web API instead
@@ -364,14 +364,14 @@ function Player(){  //<div className="bg-black mr-5 rounded-sm" style={{width: 1
         {selectedSong.id !== "" &&
         <div className="w-full">
             
-            <Marquee marqueeWidth={600} height={62} edgeWidth={48} endPause={120} selectedSong={selectedSong}>
-              <h1 ref={nameRef} className="text-5xl w-min" >{selectedSong.name}</h1>
+            <Marquee darkMode={darkMode} marqueeWidth={600} height={62} edgeWidth={48} endPause={120} selectedSong={selectedSong}>
+              <h1 ref={nameRef} className={`text-5xl w-min ${darkMode ? "text-white" : ""}`} >{selectedSong.name}</h1>
             </Marquee>
-            <Marquee marqueeWidth={600} height={25} edgeWidth={48} endPause={120} selectedSong={selectedSong}>
-              <h2 ref={authorRef}>{`${selectedSong.author} - ${selectedSong.album}`}</h2>
+            <Marquee darkMode={darkMode} marqueeWidth={600} height={25} edgeWidth={48} endPause={120} selectedSong={selectedSong}>
+              <h2 className={`${darkMode ? "text-white" : ""}`} ref={authorRef}>{`${selectedSong.author} - ${selectedSong.album}`}</h2>
             </Marquee>
 
-            <h2 className="pt-2 text-gray-500">{`${coordinates.x}, ${coordinates.y}`}</h2>
+            <h2 className={`pt-2 ${darkMode ? "text-gray-300" : "text-gray-500"}`}>{`${coordinates.x}, ${coordinates.y}`}</h2>
           </div>
         }
       </div>
@@ -383,7 +383,7 @@ type Disk = {x: number, y: number, image: number, velocity : {x : number, y : nu
 //type Label = {name : string, opacity : number}
 type Correlation = {songa: string, songb: string, count: number}
 
-function Vinyls(){
+function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, loggedIn : boolean}){
   const DISC_SIZE = 100
   const LABEL_WIDTH = 500
   const LABEL_HEIGHT = 48
@@ -414,79 +414,70 @@ function Vinyls(){
   const images = imagePaths.map(path => {
     const [image] = useImage(path)
     return image
-  });
+  })
+  const [starImage] = useImage('/star.svg')
   
   const cameraLocked = useRef(false)
   const mouseDown = useRef(false)
   const mouseStart = useRef({x:0, y:0})
   const cameraStart = useRef({x:0, y:0})
   
-  // async function getConstellation(){
-  //   //Get playlists
-  //   const playlists : Record<string, any> = await axios({
-  //     method: 'get',
-  //     url: '/api/user-playlists'
-  //   })
-  //   //Get top tracks
-  //   const topTracks : Record<string, any> = await axios({
-  //     method: 'get',
-  //     url: '/api/user-top-tracks'
-  //   })
-  //   //Add disks
-  //   const updatedDiscs : Record<string, Disk> = {}
-  //   const trackSet : Set<string> = new Set()
+  async function getConstellation(){
+    if(!loggedIn){
+      return
+    }
 
-  //   var angle = 0
-  //   const radius = DISC_SIZE*100/(2*Math.PI)
+    //Get top tracks
+    var response: Record<string, any> = (await axios({
+      method: 'get',
+      url: '/api/constellation'
+    }))
+    if(response.data.tracks.length === 0){
+      await axios({method: 'post', url: '/api/constellation'})
+      response = (await axios({
+        method: 'get',
+        url: '/api/constellation'
+      }))
+    }
 
-  //   topTracks.data.tracks.forEach((track : Record<string, any>, index : number)=> {
-  //     updatedDiscs[track.id] = {
-  //       x : Math.cos(angle)*radius, 
-  //       y : Math.sin(angle)*radius, 
-  //       image : Math.floor(Math.random()*images.length), 
-  //       velocity : {x : 0, y : 0}, 
-  //       acceleration : {x : 0, y : 0}, 
-  //       opacity : 0,
-  //       song : {name : track.name, author : track.artists.map((artist : Record<string, any>) => artist.name).join(', '), album : track.album.name, id : track.id},
-  //       size : 1 + index/100, 
-  //       movementDamp : 0.3
-  //     }
-  //     trackSet.add(track.id)
-  //     angle += (4*Math.PI)/100
-  //   })
-  //   //Set correlations to 0
-  //   correlations.current = {}
-  //   /*const tracks = topTracks.data.tracks.map((track : Record<string, any>) => track.id)
-  //   getCombinations(tracks).forEach((combo : Array<string>)=> {
-  //     correlations.current[`${combo[0]}${combo[1]}`] = 0
-  //   })*/
+    // //Add disks
+    const updatedDiscs : Record<string, Disk> = {}
+
+    var angle = 0
+    const radius = DISC_SIZE*25/(2*Math.PI)
+
+    response.data.tracks.forEach((track : Record<string, any>, index : number)=> {
+      updatedDiscs[track.id] = {
+        x : Math.cos(angle)*radius, 
+        y : Math.sin(angle)*radius, 
+        image : Math.floor(Math.random()*images.length), 
+        velocity : {x : 0, y : 0}, 
+        acceleration : {x : 0, y : 0}, 
+        opacity : 0,
+        song : {name : track.name, author : track.artists.map((artist : Record<string, any>) => artist.name).join(', '), album : track.album.name, id : track.id, play : true},
+        size : 0.1 + response.data.rankings[track.id]/100, 
+        movementDamp : 0.5
+      }
+      angle += (2*Math.PI)/25
+    })
     
-  //   for(const playlist of playlists.data.playlists){
-  //     const response = await axios({
-  //       method: 'get',
-  //       url : `/api/playlist-tracks?id=${playlist.id}`
-  //     })
-  //     const tracks = response.data.items.filter((item : Record<string, any>) => item.track && trackSet.has(item.track.id)).map((item : Record<string, any>) => item.track.id)
-  //     console.log(playlist.name)
-  //     getCombinations(tracks).forEach(
-  //       (combo : Array<string>) => {
-  //         if(correlations.current[`${combo[0]}${combo[1]}`]){
-  //           correlations.current[`${combo[0]}${combo[1]}`] += 1
-  //         }else{
-  //           correlations.current[`${combo[0]}${combo[1]}`] = 1
-  //         }
-  //       }
-  //     )
-  //   }
+    correlations.current = {}
+
+    const newCorrellations = (await axios({method: 'get', url: '/api/correlations', params: {track_ids: Object.keys(response.data.rankings)}})).data.correlations
+    newCorrellations.forEach((correlation : Correlation) => {
+      correlations.current[`${correlation.songa}:${correlation.songb}`] = correlation.count
+    })
     
-  //   /*for(const [key, count] of Object.entries(correlations.current)){
-  //     if(count === 0){
-  //       delete correlations.current[key]
-  //     }
-  //   }*/
-  //   setDiscs(updatedDiscs)
-  // }
-  //useEffect(()=>{getConstellation()},[])
+    setDiscs(updatedDiscs)
+
+    cameraTarget.current = {x: 0, y: 0}
+  }
+  useEffect(()=>{
+    setDiscs({})
+    correlations.current = {}
+    mappedSongs.current = new Set()
+    if(constellationMode) getConstellation()
+  },[constellationMode])
 
 
   function handleMouseDown(e :  React.MouseEvent<HTMLDivElement, MouseEvent>){
@@ -594,8 +585,6 @@ function Vinyls(){
           movementDamp : 1
         }
       }
-      focusedDisks.current = new Set()
-      focusedDisks.current.add(selectedSong.id)
       if(updatedDisks[selectedSong.id]){
         //updatedDisks[selectedSong.id].movementDamp = 0.5
       }
@@ -618,7 +607,7 @@ function Vinyls(){
 
       if(label !== ""){
         const labelTag = `_${selectedSong.id}`
-        updatedDisks[labelTag] = getRandomDisk(150, {name : label, album : "", author : "", id : "", play : false})
+        updatedDisks[labelTag] = getRandomDisk(500, {name : label, album : "", author : "", id : "", play : false})
         correlations.current[`${selectedSong.id}:${labelTag}`] = 1
         trackIds.forEach((track : string) => mappedSongs.current.add(track))
 
@@ -641,10 +630,13 @@ function Vinyls(){
   }
 
   useEffect(()=>{
-    if(selectedSong.id !== ""){
+    focusedDisks.current = new Set()
+    focusedDisks.current.add(selectedSong.id)
+
+    if(selectedSong.id !== "" && !constellationMode){
       updateMap(selectedSong)
     }
-  }, [selectedSong])
+  }, [selectedSong, constellationMode])
 
   useEffect(() => {
     // Update stage size when the window is resized
@@ -674,6 +666,7 @@ function Vinyls(){
       }
     }
   }, [zoom, camera, maxWidth])
+
 
 
   function pointInRectangle(point : {x : number, y : number}, rectPoint : {x : number, y : number}, width : number, height : number, padding : number){
@@ -738,30 +731,32 @@ function Vinyls(){
     
         //Update location and opacity
         for (const [id, disc] of Object.entries(updatedDiscs)) {
-          if(focusedDisks.current.has(id)){
-            if(disc.size < 1.5){
-              disc.size += 0.05
+          if(!constellationMode){
+            if(focusedDisks.current.has(id)){
+              if(disc.size < 1.5){
+                disc.size += 0.05
+              }else{
+                disc.size = 1.5
+              }
             }else{
-              disc.size = 1.5
-            }
-          }else{
-            if(disc.size > 1){
-              disc.size -= 0.05
-            }else{
-              disc.size = 1
+              if(disc.size > 1){
+                disc.size -= 0.05
+              }else{
+                disc.size = 1
+              }
             }
           }
-          
+
           if(disc.movementDamp > 0){
             disc.movementDamp -= 0.0005
           }else{
             disc.movementDamp = 0
           }
           
-          if(!focusedDisks.current.has(id) || id === selectedSong.id){
-            disc.x += (disc.velocity.x + disc.acceleration.x/2)*disc.movementDamp 
-            disc.y += (disc.velocity.y + disc.acceleration.y/2)*disc.movementDamp 
-          }
+          //if(!focusedDisks.current.has(id) || id === selectedSong.id){
+          disc.x += (disc.velocity.x + disc.acceleration.x/2)*disc.movementDamp 
+          disc.y += (disc.velocity.y + disc.acceleration.y/2)*disc.movementDamp 
+          //}
 
           
 
@@ -787,8 +782,8 @@ function Vinyls(){
           const discB = updatedDiscs[combo[1]]
           var distanceAndAngle = getDistanceAndAngle(discA.x, discA.y, discB.x, discB.y)
           
-          const minDistance = combo[0].includes("_") ? LABEL_WIDTH/2 : 100 + combo[1].includes("_") ? LABEL_WIDTH/2 : 100
-          if(distanceAndAngle.distance < minDistance){
+          const minDistance = combo[0].includes("_") ? LABEL_WIDTH/1.5 : 100 + combo[1].includes("_") ? LABEL_WIDTH/1.5 : 100
+          if(!constellationMode && distanceAndAngle.distance < minDistance){
             const difference = getXYDifference(minDistance-distanceAndAngle.distance, distanceAndAngle.angle)
             discA.x -= difference.dx/2
             discA.y -= difference.dy/2
@@ -810,7 +805,7 @@ function Vinyls(){
 
 
 
-          var force = 20/(distanceAndAngle.distance*distanceAndAngle.distance)
+          var force = 10/(distanceAndAngle.distance*distanceAndAngle.distance)
           if(distanceAndAngle.distance === 0){ //Prevent infinite force
             force = 1
           }
@@ -857,7 +852,7 @@ function Vinyls(){
     animationRef.current = window.requestAnimationFrame(animate)
 
     return ()=>{cancelAnimationFrame(animationRef.current)}
-  }, [selectedSong])
+  }, [selectedSong, constellationMode])
   
   function getRenderedX(x : number){
     return (x - camera.x)*zoom + stageDimensions.w/2 
@@ -883,10 +878,10 @@ function Vinyls(){
   return ( 
     <>
       {/*discsAvailable && <div className="absolute w-screen h-screen flex flex-col items-start justify-center top-0 left-0 p-16">
-        <button style={{width: 20, height: 20}} className={`z-10 bg-white transition-color duration-300 border-2 p-2 font-bold rounded-md ${zoom < ZOOM_MAX ? "text-gray-500 cursor-pointer  hover:border-[#887880]" : "text-gray-300 cursor-not-allowed"}  `} onClick={()=>{if(zoomTarget.current < ZOOM_MAX) zoomTarget.current+=0.2}}>
+        <button style={{width: 20, height: 20}} className={`z-10 bg-white transition-colors duration-300 border-2 p-2 font-bold rounded-md ${zoom < ZOOM_MAX ? "text-gray-500 cursor-pointer  hover:border-[#887880]" : "text-gray-300 cursor-not-allowed"}  `} onClick={()=>{if(zoomTarget.current < ZOOM_MAX) zoomTarget.current+=0.2}}>
         
         </button>
-        <button style={{width: 20, height: 20}} className={`z-10 bg-white transition-color duration-300 border-2 p-2 font-bold rounded-md ${zoom > ZOOM_MIN ? "text-gray-500 cursor-pointer  hover:border-[#887880]" : "text-gray-300 cursor-not-allowed"}  `} onClick={()=>{if(zoomTarget.current > ZOOM_MIN) zoomTarget.current-=0.2}}>
+        <button style={{width: 20, height: 20}} className={`z-10 bg-white transition-colors duration-300 border-2 p-2 font-bold rounded-md ${zoom > ZOOM_MIN ? "text-gray-500 cursor-pointer  hover:border-[#887880]" : "text-gray-300 cursor-not-allowed"}  `} onClick={()=>{if(zoomTarget.current > ZOOM_MIN) zoomTarget.current-=0.2}}>
 
         </button>
       </div>*/
@@ -949,7 +944,7 @@ function Vinyls(){
                   getRenderedX(discs[songB].x), 
                   getRenderedY(discs[songB].y)
                 ]} // (x1, y1, x2, y2)
-                stroke={focused ? "#eeeeee" : "#f5f5f5"}
+                stroke={constellationMode ? "#d5d5d5" : (focused ? "#eeeeee" : "#f5f5f5")}
                 strokeWidth={focused ? 5*zoom : 4*zoom} //Style based on focus?
                 lineCap="round"
                 lineJoin="round"
@@ -959,7 +954,27 @@ function Vinyls(){
           }
           {
             Object.entries(discs).map(([id, disc], index) => {
-              return (!id.includes("_") ? <Image
+              return (!id.includes("_") ? 
+                (
+                constellationMode ?
+                <Image
+                  key={index}
+                  image={starImage}
+
+                  x={getRenderedX(disc.x)}           
+                  y={getRenderedY(disc.y)}     
+                  opacity={disc.opacity}
+                  
+                  width={DISC_SIZE*disc.size*zoom} 
+                  height={DISC_SIZE*disc.size*zoom}  
+                  offsetX={(DISC_SIZE/2)*disc.size*zoom} // Center x-axis
+                  offsetY={(DISC_SIZE/2)*disc.size*zoom} // Center y-axis
+
+                  
+                >
+                </Image>
+                :
+                <Image
                   key={index}
                   image={images[disc.image]}
                   x={getRenderedX(disc.x)}           
@@ -976,10 +991,12 @@ function Vinyls(){
                   shadowOpacity={0.3}
                   shadowOffsetX={5*zoom}
                   shadowOffsetY={5*zoom}
+
                   onMouseEnter={()=>{focusedDisks.current.add(id)}}
                   onMouseLeave={()=>{if(id!==selectedSong.id)focusedDisks.current.delete(id)}}
                   onClick={()=>{setSelectedSong(disc.song)}}
-                /> 
+                  
+                />)
                 :
                 <Group key={index}>
                   <Text
@@ -995,72 +1012,107 @@ function Vinyls(){
                     align="center"
                     fill={'#757575'}
                   ></Text>
-                   
                 </Group>
-                
               )
             })
           }
           {
             Object.entries(discs).filter(([id, disc]) => !id.includes("_")).map(([id, disc], index) => {
-              return (<Group key={index} 
->
-                <Text
-                  text={disc.song.name}
-                  
+              return (
+                (!constellationMode || focusedDisks.current.has(id)) && 
+                <Group key={index} >
+                  <Text
+                    text={disc.song.name}
+                    
+                    x={getRenderedX(disc.x)}           
+                    y={getRenderedY(disc.y) + ((DISC_SIZE/2)*disc.size + 10)*zoom}     
+                    fontSize={16*zoom}
+                    fontFamily="Noto Serif, Noto Sans JP, Noto Sans KR, Noto Sans TC"
+                    ellipsis={true}
+                    width={150*zoom}
+                    wrap="none"
+                    opacity={disc.opacity}
+                    fill={constellationMode ? "white" : "black"}
+                    globalCompositeOperation="xor"
+
+                  ></Text>
+                  <Text
+                    text={disc.song.author}
+                    
+                    x={getRenderedX(disc.x)}           
+                    y={getRenderedY(disc.y) + ((DISC_SIZE/2)*disc.size + 10 + 16 + 10)*zoom}   //Font size and padding  
+                    fontSize={12*zoom}
+                    fontFamily="Noto Serif, Noto Sans JP, Noto Sans KR, Noto Sans TC"
+                    ellipsis={true}
+                    width={150*zoom}
+                    wrap="none"
+                    fill={constellationMode ? "white" : "#6B7280"}
+                    globalCompositeOperation="xor"
+                    opacity={disc.opacity}
+                  ></Text>
+                </Group>
+              )  
+              
+            })
+          }
+          {
+            Object.entries(discs).map(([id, disc], index) => {
+              return (
+                !id.includes("_") && 
+                constellationMode &&
+                <Circle
+                  key={index}
+                  radius={DISC_SIZE*zoom/2}
                   x={getRenderedX(disc.x)}           
-                  y={getRenderedY(disc.y) + ((DISC_SIZE/2)*disc.size + 10)*zoom}     
-                  fontSize={16*zoom}
-                  fontFamily="Noto Serif, Noto Sans JP, Noto Sans KR, Noto Sans TC"
-                  ellipsis={true}
-                  width={150*zoom}
-                  wrap="none"
-                  opacity={disc.opacity}
-
-                ></Text>
-
-                <Text
-                  text={disc.song.author}
-                  
-                  x={getRenderedX(disc.x)}           
-                  y={getRenderedY(disc.y) + ((DISC_SIZE/2)*disc.size + 10 + 16 + 10)*zoom}   //Font size and padding  
-                  fontSize={12*zoom}
-                  fontFamily="Noto Serif, Noto Sans JP, Noto Sans KR, Noto Sans TC"
-                  ellipsis={true}
-                  width={150*zoom}
-                  wrap="none"
-                  fill="#6B7280"
-                  opacity={disc.opacity}
-                ></Text>
-              </Group>)  
-
+                  y={getRenderedY(disc.y)}     
+                  fill='transparent'
+                  onMouseEnter={()=>{focusedDisks.current.add(id)}}
+                  onMouseLeave={()=>{if(id!==selectedSong.id)focusedDisks.current.delete(id)}}
+                  onClick={()=>{setSelectedSong(disc.song)}}
+                >
+                </Circle>)
             })
           }
           </Layer>
         </Stage>}
-        {selectedSong.id === "" && <div>
+
+        {Object.values(discs).length === 0 && 
+        (constellationMode ? 
+        (!loggedIn ?
+        <div>
+          <h1 className="text-lg text-gray-400 text-center">Sign in to see your constellation!</h1>
+        </div>
+        :
+        <SyncLoader color="#887880" loading={true} size={5}></SyncLoader>
+        )
+        :
+        (selectedSong.id === "" ? 
+        <div>
           <h1 className="text-lg text-gray-400 text-center">Search for a song using the search bar below!</h1>
-        </div>}
-        {Object.values(discs).length === 0 && selectedSong.id !== "" && <div>
+        </div>
+        : 
+        <div>
           <h1 className="text-2xl text-gray-400 text-center">We're in uncharted waters here...</h1>
           <h2 className="text-gray-400 text-center ">Contribute to add this song!</h2>
-        </div>}
+        </div>))}
       </div>
     </>
   )
 }
 
-function Search(){
+function Search({darkMode} : {darkMode : boolean}){
   const setSelectedSong = useContext(SongContext).setValue
 
+
+    
   return (
-    <>
-      <SearchBar disable={false} defaultSearch={""} onChange={()=>{}} boxWidth={400} type="track" growDown={false} light={false} placeholder="Search by track" onClick={(data)=>{setSelectedSong(data)}}></SearchBar>
-    </>
+    <div className={`z-10 transition-all duration-500 ${darkMode ? "opacity-0" : ""}`}>
+      {!darkMode && <SearchBar disable={false} defaultSearch={""} onChange={()=>{}} boxWidth={400} type="track" growDown={false} light={false} placeholder="Search by track" onClick={(data)=>{setSelectedSong(data)}}></SearchBar>}
+    </div>
   )
 }
 
-function Contribute(){
+function Contribute({darkMode} : {darkMode : boolean}){
   const setSelectedSong = useContext(SongContext).setValue
   const [showSearch, setShowSearch] = useState(false)
   const [fadeIn, setFadeIn] = useState(false)
@@ -1144,7 +1196,7 @@ function Contribute(){
                       )}
                     </div>
                     <div className="flex items-center">
-                      <button disabled={disable} onClick={contributeTracks} className={`mt-2 transition-color duration-300 border-2 p-2 rounded-md border-[#887880] cursor-pointer  ${disable ? "cursor-not-allowed text-[#887880]" : "text-white hover:border-white"}`}>Submit</button>
+                      <button disabled={disable} onClick={contributeTracks} className={`mt-2 transition-colors duration-300 border-2 p-2 rounded-md border-[#887880] cursor-pointer  ${disable ? "cursor-not-allowed text-[#887880]" : "text-white hover:border-white"}`}>Submit</button>
                       {disable && <div className="p-2"><SyncLoader color="#887880" loading={true} size={5}></SyncLoader></div>}
                       {showThanks && <p className="mt-2 p-2 text-white text-[#887880]">Submission accepted!</p>}
                     </div>
@@ -1181,16 +1233,15 @@ function Contribute(){
       <button onClick={()=>{
         setShowSearch(true) 
         setFadeIn(true)
-      }} className="z-10 bg-white transition-color duration-300 border-2 ml-2 p-2  rounded-md text-gray-700 cursor-pointer hover:border-[#887880]">Contribute</button>
+      }} className={`z-10 ${darkMode ? "bg-black text-white border-[#887880] hover:border-white" : "bg-white text-gray-700 hover:border-[#887880]"} border-2 ml-2 p-2 rounded-md cursor-pointer`}>Contribute</button>
     </>
   )
 }
 
-function Tutorial(){
+function Tutorial({darkMode} : {darkMode : boolean}){
   const [showTutorial, setShowTutorial] = useState(false)
   const [fadeIn, setFadeIn] = useState(false)
   
-
   return <>
   <div className={`z-50 duration-300 transition  ${fadeIn ? "opacity-80" : "opacity-0"}`}>
         {showTutorial && 
@@ -1215,33 +1266,56 @@ function Tutorial(){
     <button onClick={()=>{
       setShowTutorial(true)
       setFadeIn(true)
-    }} className="z-10 bg-white transition-color duration-300 border-2 p-2 w-12 h-12 rounded-md text-gray-700 cursor-pointer hover:border-[#887880]">?</button>
+    }} className={`z-10 ${darkMode ? "bg-black text-white border-[#887880] hover:border-white" : "bg-white text-gray-700 hover:border-[#887880]"}  border-2 p-2 w-12 h-12 rounded-md cursor-pointer`}>?</button>
   </>
 }
 
 
-function Map({loggedIn, handleLogout} : {loggedIn : boolean, handleLogout : ()=>void}){
-  const [selectedSong, setSelectedSong] = useState<Song>({name : "", author : "", album : "", id : "", play : false})    
+function Map({loggedIn, handleLogout, userId} : {loggedIn : boolean, handleLogout : ()=>void, userId : string}){
+  const NULL_SONG = {name : "", author : "", album : "", id : "", play : false}
+  const [selectedSong, setSelectedSong] = useState<Song>(NULL_SONG)    
   const [playerVolume, setPlayerVolume] = useState(50)
   const [savedPlayerVolume, setSavedPlayerVolume] = useState(50)
 
+  const [constellationMode, setConstellationMode] = useState(false)
+  const [shareText, setShareText] = useState("Share")
+  const shareTimeoutRef : any = useRef(null) //Type seems to differ by browser and node
 
   const player : any = useContext(PlayerContext).value 
 
   return (
     <SongContext.Provider value={{value : selectedSong, setValue : setSelectedSong}}>
-      <div className="w-screen h-screen flex flex-col justify-between p-16">
+      <div className={`w-screen h-screen flex flex-col justify-between p-16  ${constellationMode ? "bg-black" : "bg-white"}`}>
         <div className="flex justify-between items-start">
-          <Player></Player>
-          <button onClick={handleLogout} className="bg-white transition-color duration-300 border-2 p-2 h-12 rounded-md text-gray-700 cursor-pointer hover:border-[#887880] z-10">Log Out</button>
+          <Player darkMode={constellationMode}></Player>
+          <button onClick={handleLogout} className={`z-10 ${constellationMode ? "bg-black text-white border-[#887880] hover:border-white" : "bg-white text-gray-700 hover:border-[#887880]"} border-2 p-2 h-12 rounded-md cursor-pointer`}>Log Out</button>
         </div>
-        <Vinyls></Vinyls>
+        <Vinyls loggedIn={loggedIn} constellationMode={constellationMode}></Vinyls>
         <div className="flex justify-between items-end">
           <div className="flex gap-1 items-end">
-            <Search></Search>
-            {loggedIn && <button className="z-10 bg-white transition-color duration-300 border-2 p-2 w-12 h-12 rounded-md text-gray-700 cursor-pointer hover:border-[#887880]" title="Get your Spotify Constellation!">
-              <img src="/noun-constellation-7549423.svg"></img>  
-            </button>}
+            <button onClick={()=>{
+              
+              setConstellationMode(prev => !prev)
+              }} className={`z-10 ${constellationMode ? "bg-black text-white border-[#887880] hover:border-white" : "bg-white text-gray-700 hover:border-[#887880]"} border-2 p-2 w-12 h-12 rounded-md cursor-pointer`} title={constellationMode ? "See Our Map of Spotify!" : "Get your Spotify Constellation!"}>
+              {constellationMode ? <img src="/noun-map-1607128.svg"></img>  : <img src="/noun-constellation-7549423.svg"></img>}
+            </button>
+            
+            <Search darkMode={constellationMode}></Search>
+            <div className={`transition-all duration-500 flex gap-2 ${constellationMode ? "" : "opacity-0"}`}>
+            {constellationMode && loggedIn && 
+            <>
+              <button className={`z-10 bg-black text-white border-[#887880] hover:border-white transition-colors duration-300 border-2 p-2 h-12 rounded-md cursor-pointer`}>Regenerate</button>
+              <button 
+              onClick={()=>{
+                navigator.clipboard.writeText(`${window.location.href}?constellation=${userId}`)
+                setShareText("Link Copied!")
+                clearTimeout(shareTimeoutRef.current)
+                shareTimeoutRef.current = setTimeout(()=>{setShareText('Share')}, 1000)
+              }}
+              className={`z-10 bg-black text-white border-[#887880] hover:border-white transition-colors duration-300 border-2 p-2 h-12 rounded-md cursor-pointer`}>{shareText}</button>
+            </>
+            }
+            </div>
           </div>
           <div className="flex gap-1 items-center"> 
             {<div className={` duration-500 transition flex items-center gap-2 ${player ? "" : "opacity-0"}`}> 
@@ -1253,7 +1327,7 @@ function Map({loggedIn, handleLogout} : {loggedIn : boolean, handleLogout : ()=>
                     setPlayerVolume(0)
                   })
                 }}>
-                  <VolumeUpIcon sx={{color: '#9CA3AF'}}></VolumeUpIcon>     
+                  <VolumeUpIcon sx={{color: constellationMode ? '#FFFFFF' : '#9CA3AF'}}></VolumeUpIcon>     
                 </button>
                 :
                 <button className="cursor-pointer z-10" onClick={()=>{
@@ -1261,7 +1335,7 @@ function Map({loggedIn, handleLogout} : {loggedIn : boolean, handleLogout : ()=>
                     setPlayerVolume(savedPlayerVolume)
                   })
                 }}>
-                  <VolumeOffIcon sx={{color: '#9CA3AF'}}></VolumeOffIcon>     
+                  <VolumeOffIcon sx={{color: constellationMode ? '#FFFFFF' : '#9CA3AF'}}></VolumeOffIcon>     
                 </button>)
               }        
               {
@@ -1271,16 +1345,16 @@ function Map({loggedIn, handleLogout} : {loggedIn : boolean, handleLogout : ()=>
                   width: 100, 
                   color: '#d1d5db',
                   '& .MuiSlider-thumb': {
-                    backgroundColor: '#d1d5db',  
+                    backgroundColor: constellationMode ? '#FFFFFF' : '#d1d5db',  
                     width: 16, 
                     height: 16,
                     
                   },
                   '& .MuiSlider-rail': {
-                    backgroundColor: '#d3d3d3',  
+                    backgroundColor: constellationMode ? '#FFFFFF' : '#d3d3d3',  
                   },
                   '& .MuiSlider-track': {
-                    backgroundColor: '#d3d3d3',  
+                    backgroundColor: constellationMode ? '#FFFFFF' : '#d3d3d3',  
                   },
                   '& .MuiSlider-thumb:hover': {
                     boxShadow: '0 2px 6px rgba(107, 114, 128, 0.6)',
@@ -1306,8 +1380,8 @@ function Map({loggedIn, handleLogout} : {loggedIn : boolean, handleLogout : ()=>
               </div>
               }
               
-            <Contribute></Contribute>
-            <Tutorial></Tutorial>
+            <Contribute darkMode={constellationMode}></Contribute>
+            <Tutorial darkMode={constellationMode}></Tutorial>
           </div>
         </div>
       </div>
@@ -1322,6 +1396,7 @@ export default function App() {
   const [player, setPlayer] = useState<any>() //Not sure what type this is
   const [playerWidth, setPlayerWidth] = useState(0)
   const [loggedIn, setLoggedIn] = useState(false)
+  const [userId, setUserId] = useState("")
 
   useEffect(()=>{
     axios({
@@ -1332,6 +1407,7 @@ export default function App() {
         if(response.data.logged_in){
           signIn()
           setLoggedIn(true)
+          setUserId(response.data.id)
         }
       }
     )
@@ -1357,11 +1433,12 @@ export default function App() {
             setShowMap(false) //Instantly, otherwise looks dumb
             if(player) player.disconnect()
             setPlayer(null)
-
+            setLoggedIn(false)
             document.cookie = `spotify_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`
 
             }}
-            loggedIn={loggedIn}></Map> /**/} 
+            loggedIn={loggedIn}
+            userId={userId}></Map> /**/} 
         </div>
       </div>
     </PlayerContext.Provider>

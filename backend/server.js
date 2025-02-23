@@ -205,6 +205,15 @@ app.put('/api/contribute', async (req, res) => {
   res.json({success : true})
 })
 
+app.get('/api/correlations', async (req, res) => {
+  const correlations = []
+  await Promise.all(getCombinations(req.query.track_ids).map(async combo => {
+    const data = await db.any(`SELECT * FROM correlations WHERE songA = '${combo[0]}' AND songB = '${combo[1]}'`)
+    correlations.push(...data)
+  }))
+  res.json({correlations: correlations.sort((a, b) => a.count - b.count).reverse().slice(0, 100)})
+})
+
 // /api/neighbours
 app.get('/api/neighbours', async (req, res) => {
   const track_id = req.query.track_id
@@ -297,7 +306,7 @@ app.get('/api/login-state', (req, res) => {
     }
   }).then(
     (response) => {
-      res.json({logged_in : true})
+      res.json({logged_in : true, id : response.data.id})
     }
   ).catch(
     (error)=>{
@@ -429,7 +438,7 @@ app.post('/api/constellation', async (req, res) => {
       'Authorization': 'Bearer ' + req.cookies['spotify_token'],
     }
   })
-  const userID = profileRequest.id
+  const userID = profileRequest.data.id
 
   //Get tracks and store in database
   var trackRequest = await axios({
@@ -440,21 +449,51 @@ app.post('/api/constellation', async (req, res) => {
     },
     params: {
       offset: 0, 
-      limit: 50,
+      limit: 25,
       time_range: 'long_term'
     }
   })
   const topTracks = trackRequest.data.items.map(track => track.id)
   await db.none(`DELETE FROM toptracks WHERE id = '${userID}'`)
-  await Promise.all(topTracks.map(async (trackId)=>{
-    await db.none(`INSERT INTO toptracks VALUES('${userID}','${trackId}')`)
+  await Promise.all(topTracks.map(async (trackId, i)=>{
+    await db.none(`INSERT INTO toptracks VALUES('${userID}','${trackId}', ${i})`)
   }))
   res.json({success : true})
 })
 
 app.get('/api/constellation', async (req, res) => {
-  const topTracks = (await db.any(`SELECT song FROM toptracks WHERE id = '${req.query.user}'`)).map(data => data.song)
-  res.json({tracks : topTracks})
+  var userID = req.query.user
+  //User current use if non provided
+  if(!userID){
+    var profileRequest = await axios({
+      method: 'get',
+      url : 'https://api.spotify.com/v1/me/',
+      headers: {
+        'Authorization': 'Bearer ' + req.cookies['spotify_token'],
+      }
+    })
+    userID = profileRequest.data.id
+  }
+
+  const topTracks = await db.any(`SELECT * FROM toptracks WHERE id = '${userID}'`)
+  const rankings = {}
+  topTracks.forEach((data) => {rankings[data.song] = data.ranking})
+
+  var tracks = []
+  if(topTracks.length > 0){
+    tracks = (await axios({
+      method: 'get',
+      url : `https://api.spotify.com/v1/tracks`,
+      headers: {
+        'Authorization': 'Bearer ' + await readGlobalSpotifyToken(),
+      },
+      params: {
+        ids: topTracks.map(data => data.song).join(",")
+      }
+    })).data.tracks
+  }
+
+  res.json({rankings : rankings, tracks : tracks})
 })
 
 app.listen(8888, ()=>{

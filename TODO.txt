@@ -130,3 +130,13 @@ must have email ready
 so it's a map (with embeddings summary?)
 contribution
 jams should work in theory 
+
+
+Correlations DONE
+
+Swapping between modes (marquee transition does not work)
+cluster names 
+
+Regenerate button 
+Sharing constellations
+User name next to constellation?
