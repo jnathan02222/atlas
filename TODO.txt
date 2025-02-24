@@ -134,7 +134,7 @@ jams should work in theory
 
 Correlations DONE
 
-Swapping between modes (marquee transition does not work)
+Swapping between modes (marquee transition does not work) NAH 
 cluster names 
 
 Regenerate button 

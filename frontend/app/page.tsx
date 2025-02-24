@@ -1033,7 +1033,6 @@ function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, lo
                     wrap="none"
                     opacity={disc.opacity}
                     fill={constellationMode ? "white" : "black"}
-                    globalCompositeOperation="xor"
 
                   ></Text>
                   <Text
@@ -1047,7 +1046,6 @@ function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, lo
                     width={150*zoom}
                     wrap="none"
                     fill={constellationMode ? "white" : "#6B7280"}
-                    globalCompositeOperation="xor"
                     opacity={disc.opacity}
                   ></Text>
                 </Group>
