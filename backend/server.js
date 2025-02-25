@@ -495,7 +495,7 @@ app.post('/api/constellation', async (req, res) => {
     }))
     res.json({success : true})
   }catch(error){
-    console.error(`${"/api/constellation"} ${error}`)
+    console.error(`${"POST /api/constellation"} ${error}`)
     res.status(500).json({error: "Something went wrong."})
   }
 })
@@ -525,7 +525,7 @@ app.get('/api/constellation', async (req, res) => {
 
     res.json({rankings : rankings, tracks : tracks, name : name})
   }catch(error){
-    console.error(`${"/api/constellation"} ${error}`)
+    console.error(`${"GET /api/constellation"} ${error}`)
     res.status(500).json({error: "Something went wrong."})
   }
 })

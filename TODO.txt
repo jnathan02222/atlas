@@ -140,6 +140,7 @@ Larger search radius (probably easier to do backend) DONE
 Backend error handling DONE?
 Lock frontend
 Refresh token 
+Add data to db
 
 Sharing DONE
 	Preserve url parameters in callback NAH
