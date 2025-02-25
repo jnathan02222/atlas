@@ -95,6 +95,8 @@ function generateRandomString(n) {
 }
 
 function getCombinations(list) {
+  if(!list) return []
+  
   const result = []
   for(var i = 0; i < list.length; i++){
     for(var j = i+1; j < list.length; j++){
@@ -415,7 +417,7 @@ app.get('/api/login', (req, res) => {
       response_type: 'code',
       client_id: client_id,
       scope: scope,
-      redirect_uri: redirect_uri,
+      redirect_uri: `${redirect_uri}`,
       state: state
     }));
 })
@@ -487,17 +489,6 @@ app.post('/api/constellation', async (req, res) => {
 
 app.get('/api/constellation', async (req, res) => {
   var userID = req.query.user
-  //User current user if non provided
-  if(!userID){
-    var profileRequest = await axios({
-      method: 'get',
-      url : 'https://api.spotify.com/v1/me/',
-      headers: {
-        'Authorization': 'Bearer ' + req.cookies['spotify_token'],
-      }
-    })
-    userID = profileRequest.data.id
-  }
 
   const topTracks = await db.any(`SELECT * FROM toptracks WHERE id = '${userID}'`)
   const rankings = {}

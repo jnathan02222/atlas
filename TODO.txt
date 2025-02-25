@@ -141,6 +141,6 @@ Refresh token
 Backend error handling
 
 Sharing
-	Preserve url parameters in callback
+	Preserve url parameters in callback 
 	Require login, but go straight to constellation page
 	Clicking on map opens a new tab

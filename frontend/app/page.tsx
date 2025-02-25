@@ -147,6 +147,7 @@ const SearchBar = ({boxWidth, growDown, light, placeholder, type, onClick, onCha
 }
 
 function Home({signInHandler} : {signInHandler : ()=> void}){
+
   return (
     <div className="flex min-h-screen  items-center  w-screen overflow-hidden select-none">
       <div className="flex items-center justify-center w-1/2 min-h-screen ml-[10%] ">
@@ -162,7 +163,7 @@ function Home({signInHandler} : {signInHandler : ()=> void}){
         <img src="/Full_Logo_Black_RGB.svg" draggable="false" className="h-6"></img>
         <h1 className="text-black text-8xl">Atlas</h1>
         <div className="flex">
-          <a href="/api/login" className="transition-colors duration-300 hover:border-[#887880] border-2 p-2 mt-2 rounded-md text-gray-700  cursor-pointer" >Sign In</a>
+          <a href={`/api/login`} className="transition-colors duration-300 hover:border-[#887880] border-2 p-2 mt-2 rounded-md text-gray-700  cursor-pointer" >Sign In</a>
           <button onClick={signInHandler} className="transition-colors duration-300 hover:border-[#887880] border-2 p-2 ml-2 mt-2 rounded-md text-gray-700  cursor-pointer">Guest</button>
         </div>
 
@@ -387,7 +388,7 @@ type Disk = {x: number, y: number, image: number, velocity : {x : number, y : nu
 //type Label = {name : string, opacity : number}
 type Correlation = {songa: string, songb: string, count: number}
 
-function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, loggedIn : boolean}){
+function Vinyls({constellationMode, loggedIn, userId} : {constellationMode : boolean, loggedIn : boolean, userId : string | null}){
   const DISC_SIZE = 100
   const LABEL_WIDTH = 500
   const LABEL_HEIGHT = 48
@@ -430,20 +431,26 @@ function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, lo
  
 
   async function getConstellation(regenerate : boolean){
-    if(!loggedIn){
+    if(!userId){
       return
     }
 
     //Get top tracks
     var response: Record<string, any> = (await axios({
       method: 'get',
-      url: '/api/constellation'
+      url: '/api/constellation',
+      params: {
+        user: userId
+      }
     }))
-    if(regenerate || response.data.tracks.length === 0){
+    if(regenerate || (loggedIn && response.data.name.length === 0)){
       await axios({method: 'post', url: '/api/constellation'})
       response = (await axios({
         method: 'get',
-        url: '/api/constellation'
+        url: '/api/constellation',
+        params: {
+          user: userId
+        }
       }))
     }
 
@@ -485,9 +492,11 @@ function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, lo
         updatedDiscs[labelTag] = {
           ...updatedDiscs[track.id],
         }
-        correlations.current[`${track.id}:${labelTag}`] = 1
+        trackIds.forEach(id => {
+          correlations.current[`${track.id}:${labelTag}`] = 1
+        })
         labels[labelTag] = trackIds
-
+        
         neighbours.forEach((c : Correlation) => {
           mappedSongs.current.add(c.songa)
           mappedSongs.current.add(c.songb)
@@ -507,6 +516,7 @@ function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, lo
       updatedDiscs[labelTag].x = average(...trackIds.map(id => updatedDiscs[id].x))
       updatedDiscs[labelTag].y = average(...trackIds.map(id => updatedDiscs[id].y))
       updatedDiscs[labelTag].size = 0.5
+      updatedDiscs[labelTag].movementDamp = 0
     }))
     //Constellation name
     // updatedDiscs["_"] = {
@@ -928,12 +938,16 @@ function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, lo
     window.addEventListener('keydown', handleKeyDown)
     return ()=>{window.removeEventListener('keydown', handleKeyDown)}
   },[])*/
-
+  
 
   const discsAvailable = Object.values(discs).length !== 0 
   return ( 
     <>
-      {constellationMode && loggedIn && <button onClick={()=>{getConstellation(true)}} className={`z-10 bg-black text-white border-[#887880] hover:border-white transition-colors duration-300 border-2 p-2 h-12 rounded-md cursor-pointer`}>Regenerate</button>    }
+      {constellationMode && loggedIn && <button onClick={()=>{
+        setDiscs({})
+        getConstellation(true)
+        
+        }} className={`z-10 bg-black text-white border-[#887880] hover:border-white transition-colors duration-300 border-2 p-2 h-12 rounded-md cursor-pointer`}>Regenerate</button>    }
       {/*discsAvailable && <div className="absolute w-screen h-screen flex flex-col items-start justify-center top-0 left-0 p-16">
         <button style={{width: 20, height: 20}} className={`z-10 bg-white transition-colors duration-300 border-2 p-2 font-bold rounded-md ${zoom < ZOOM_MAX ? "text-gray-500 cursor-pointer  hover:border-[#887880]" : "text-gray-300 cursor-not-allowed"}  `} onClick={()=>{if(zoomTarget.current < ZOOM_MAX) zoomTarget.current+=0.2}}>
         
@@ -1001,7 +1015,7 @@ function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, lo
                   getRenderedX(discs[songB].x), 
                   getRenderedY(discs[songB].y)
                 ]} // (x1, y1, x2, y2)
-                stroke={constellationMode ? "#757575" : (focused ? "#eeeeee" : "#f5f5f5")}
+                stroke={constellationMode ? "#353535" : (focused ? "#eeeeee" : "#f5f5f5")}
                 strokeWidth={focused ? 5*zoom : 4*zoom} //Style based on focus?
                 lineCap="round"
                 lineJoin="round"
@@ -1133,7 +1147,7 @@ function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, lo
 
         {Object.values(discs).length === 0 && 
         (constellationMode ? 
-        (!loggedIn ?
+        ((!loggedIn && !userId) ?
         <div>
           <h1 className="text-lg text-gray-400 text-center">Sign in to see your constellation!</h1>
         </div>
@@ -1161,9 +1175,9 @@ function Search({darkMode} : {darkMode : boolean}){
 
     
   return (
-    <div className={`z-10 transition-all duration-500 ${darkMode ? "opacity-0" : ""}`}>
+    <>
       {!darkMode && <SearchBar disable={false} defaultSearch={""} onChange={()=>{}} boxWidth={400} type="track" growDown={false} light={false} placeholder="Search by track" onClick={(data)=>{setSelectedSong(data)}}></SearchBar>}
-    </div>
+    </>
   )
 }
 
@@ -1326,13 +1340,13 @@ function Tutorial({darkMode} : {darkMode : boolean}){
 }
 
 
-function Map({loggedIn, handleLogout, userId} : {loggedIn : boolean, handleLogout : ()=>void, userId : string}){
+function Map({loggedIn, handleLogout, userId, defaultConstellationState} : {loggedIn : boolean, handleLogout : ()=>void, userId : string | null, defaultConstellationState : boolean}){
   const NULL_SONG = {name : "", author : "", album : "", id : "", play : false}
   const [selectedSong, setSelectedSong] = useState<Song>(NULL_SONG)    
   const [playerVolume, setPlayerVolume] = useState(50)
   const [savedPlayerVolume, setSavedPlayerVolume] = useState(50)
 
-  const [constellationMode, setConstellationMode] = useState(false)
+  const [constellationMode, setConstellationMode] = useState(defaultConstellationState)
   const [shareText, setShareText] = useState("Share")
   const shareTimeoutRef : any = useRef(null) //Type seems to differ by browser and node
 
@@ -1347,23 +1361,25 @@ function Map({loggedIn, handleLogout, userId} : {loggedIn : boolean, handleLogou
         </div>
 
         <div className="flex justify-between items-end">
-          <div className="flex gap-1 items-end">
+          <div className="flex gap-2 items-end">
             <button onClick={()=>{
-              
-              setConstellationMode(prev => !prev)
+              if(defaultConstellationState === true){
+                window.open(window.location.origin)
+              }else{
+                setConstellationMode(prev => !prev)
+              } 
               }} className={`z-10 ${constellationMode ? "bg-black text-white border-[#887880] hover:border-white" : "bg-white text-gray-700 hover:border-[#887880]"} border-2 p-2 w-12 h-12 rounded-md cursor-pointer`} title={constellationMode ? "See Our Map of Spotify!" : "Get your Spotify Constellation!"}>
               {constellationMode ? <img src="/noun-map-1607128.svg"></img>  : <img src="/noun-constellation-7549423.svg"></img>}
             </button>
             
             <Search darkMode={constellationMode}></Search>
-            <Vinyls loggedIn={loggedIn} constellationMode={constellationMode}></Vinyls>
+            <Vinyls loggedIn={loggedIn} constellationMode={constellationMode} userId={userId}></Vinyls>
 
-            <div className={`transition-all duration-500 flex gap-2 ${constellationMode ? "" : "opacity-0"}`}>
-            {constellationMode && loggedIn && 
+            {constellationMode && (loggedIn || defaultConstellationState) && 
             <>
               <button 
               onClick={()=>{
-                navigator.clipboard.writeText(`${window.location.href}?constellation=${userId}`)
+                navigator.clipboard.writeText(`${window.location.origin + window.location.pathname}?constellation=${userId}`)
                 setShareText("Link Copied!")
                 clearTimeout(shareTimeoutRef.current)
                 shareTimeoutRef.current = setTimeout(()=>{setShareText('Share')}, 1000)
@@ -1371,7 +1387,6 @@ function Map({loggedIn, handleLogout, userId} : {loggedIn : boolean, handleLogou
               className={`z-10 bg-black text-white border-[#887880] hover:border-white transition-colors duration-300 border-2 p-2 h-12 rounded-md cursor-pointer`}>{shareText}</button>
             </>
             }
-            </div>
           </div>
           <div className="flex gap-1 items-center"> 
             {<div className={` duration-500 transition flex items-center gap-2 ${player ? "" : "opacity-0"}`}> 
@@ -1446,27 +1461,35 @@ function Map({loggedIn, handleLogout, userId} : {loggedIn : boolean, handleLogou
 }
 
 export default function App() {
-  const [showMap, setShowMap] = useState(false)
-  const [showHome, setShowHome] = useState(true)
-  const [fadeIn, setFadeIn] = useState(false)
+  const currentParams = new URLSearchParams(window.location.search)
+  const viewConstellation = currentParams.has('constellation')
+
+  const [showMap, setShowMap] = useState(viewConstellation)
+  const [showHome, setShowHome] = useState(!viewConstellation)
+  const [fadeIn, setFadeIn] = useState(viewConstellation)
   const [player, setPlayer] = useState<any>() //Not sure what type this is
   const [playerWidth, setPlayerWidth] = useState(0)
   const [loggedIn, setLoggedIn] = useState(false)
-  const [userId, setUserId] = useState("")
+  const [userId, setUserId] = useState(currentParams.get('constellation'))
 
+  const [defaultConstellationState, setDefaultConstellationState] = useState<boolean>(currentParams.has('constellation'))
+  
   useEffect(()=>{
-    axios({
-      method: 'get',
-      url: '/api/login-state'
-    }).then(
-      response => {
-        if(response.data.logged_in){
-          signIn()
-          setLoggedIn(true)
-          setUserId(response.data.id)
+    if(!viewConstellation){
+      axios({
+        method: 'get',
+        url: '/api/login-state'
+      }).then(
+        response => {
+          if(response.data.logged_in){
+            signIn()
+            setLoggedIn(true)
+            setUserId(response.data.id)
+          }
         }
-      }
-    )
+      )
+    }
+    
   }, [])
   
   function signIn(){
@@ -1493,6 +1516,7 @@ export default function App() {
             document.cookie = `spotify_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`
 
             }}
+            defaultConstellationState={defaultConstellationState}
             loggedIn={loggedIn}
             userId={userId}></Map> /**/} 
         </div>
