@@ -137,10 +137,12 @@ Name label DONE
 Regenerate button DONE
 
 Larger search radius (probably easier to do backend) DONE
+Backend error handling DONE?
+Lock frontend
 Refresh token 
-Backend error handling
 
-Sharing
-	Preserve url parameters in callback 
-	Require login, but go straight to constellation page
-	Clicking on map opens a new tab
+Sharing DONE
+	Preserve url parameters in callback NAH
+	Require login, but go straight to constellation page NO
+    - Instead signs in for you but to viewer only
+	Clicking on map opens a new tab YES

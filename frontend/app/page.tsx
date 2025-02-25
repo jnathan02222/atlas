@@ -1357,7 +1357,7 @@ function Map({loggedIn, handleLogout, userId, defaultConstellationState} : {logg
       <div className={`w-screen h-screen flex flex-col justify-between p-16  ${constellationMode ? "bg-black" : "bg-white"}`}>
         <div className="flex justify-between items-start">
           <Player darkMode={constellationMode}></Player>
-          <button onClick={handleLogout} className={`z-10 ${constellationMode ? "bg-black text-white border-[#887880] hover:border-white" : "bg-white text-gray-700 hover:border-[#887880]"} border-2 p-2 h-12 rounded-md cursor-pointer`}>Log Out</button>
+          {!defaultConstellationState && <button onClick={handleLogout} className={`z-10 ${constellationMode ? "bg-black text-white border-[#887880] hover:border-white" : "bg-white text-gray-700 hover:border-[#887880]"} border-2 p-2 h-12 rounded-md cursor-pointer`}>Log Out</button>}
         </div>
 
         <div className="flex justify-between items-end">
@@ -1472,8 +1472,6 @@ export default function App() {
   const [loggedIn, setLoggedIn] = useState(false)
   const [userId, setUserId] = useState(currentParams.get('constellation'))
 
-  const [defaultConstellationState, setDefaultConstellationState] = useState<boolean>(currentParams.has('constellation'))
-  
   useEffect(()=>{
     if(!viewConstellation){
       axios({
@@ -1516,7 +1514,7 @@ export default function App() {
             document.cookie = `spotify_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`
 
             }}
-            defaultConstellationState={defaultConstellationState}
+            defaultConstellationState={viewConstellation}
             loggedIn={loggedIn}
             userId={userId}></Map> /**/} 
         </div>

@@ -16,7 +16,7 @@ const db = pgp({
   database: 'music_db',         
   user: 'postgres',           
   password: process.env.DB_PASSWORD,   
-  //ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false }
 })
 
 const { manyKMeansWithSilhouette } = require('clustering')
@@ -106,6 +106,8 @@ function getCombinations(list) {
   return result
 }
 
+const RETRY = 3
+
 // /api/search/
 app.get('/api/search', async (req, res) => {
   try {
@@ -115,22 +117,21 @@ app.get('/api/search', async (req, res) => {
     }
     res.json(response.data)
   }catch (error) {
-    //console.log(error)
-    if(error.status === 401){
-      for(var i = 0; i < 3; i++){ //Attempt 3 times
-        try {
-          //Use general token
-          const response = await spotifySearch(await readGlobalSpotifyToken(), req)
-          res.json(response.data)
+    for(var i = 0; i < RETRY; i++){ //Attempt 3 times
+      try {
+        //Use general token
+        const response = await spotifySearch(await readGlobalSpotifyToken(), req)
+        res.json(response.data)
+        return
+      } catch (error) {
+        if(error.status !== 401){
           break
-        } catch (error) {
-          if(error.status !== 401){
-            break
-          }
-          await refreshToken()
         }
+        await refreshToken()
       }
     }
+    console.error(`${"/api/search"} ${error}`)
+    res.status(500).json({error: "Something went wrong."})
   }
 })
 
@@ -140,13 +141,12 @@ app.get('/api/playlist-tracks', async (req, res) => {
     const response = await getSpotifyPlaylist(req.cookies['spotify_token'], req)
     res.json(response.data)
   }catch(error){
-    console.log(error)
-    for(var i = 0; i < 3; i++){ //Attempt 3 times
+    for(var i = 0; i < RETRY; i++){ //Attempt 3 times
       try {
         //Use general token
         const response = await getSpotifyPlaylist(await readGlobalSpotifyToken(), req)
         res.json(response.data)
-        break
+        return
       } catch (error) {
         if(error.status !== 401){
           break
@@ -154,66 +154,90 @@ app.get('/api/playlist-tracks', async (req, res) => {
         await refreshToken()
       }
     }
+    console.error(`${"/api/playlist-tracks"} ${error}`)
+    res.status(500).json({error: "Something went wrong."})
+    
   }
-  
 })  
 
 
 // /api/contribute 
 app.put('/api/contribute', async (req, res) => {
   //Get vector embedding if necessary
-  const playlists = await db.any(`SELECT * FROM embeddings WHERE playlist = '${req.body.playlist.id}'`)
-
-  if(playlists.length === 0){
-    const response = await openai.embeddings.create({
-      model: "text-embedding-3-small",
-      input: `Playlist title: ${req.body.playlist.name}`,
-      encoding_format: "float",
-      dimensions: 512
-    })
-    await db.none(`INSERT INTO embeddings VALUES ('${req.body.playlist.id}', '[${response.data[0].embedding.toString()}]')`)
+  if(!req.body.playlist || !req.body.playlist.id){
+    res.status(400).json({ error: 'Missing playlist id.' });
+    return
   }
+  
+  try {
+    const playlists = await db.any(`SELECT * FROM embeddings WHERE playlist = '${req.body.playlist.id}'`)
+    if(playlists.length === 0){
+      const response = await openai.embeddings.create({
+        model: "text-embedding-3-small",
+        input: `Playlist title: ${req.body.playlist.name}`,
+        encoding_format: "float",
+        dimensions: 512
+      })
+      await db.none(`INSERT INTO embeddings VALUES ('${req.body.playlist.id}', '[${response.data[0].embedding.toString()}]')`)
+    }
 
-  //POTENTIAL FOR SPEEDUP / LESS STORAGE
-  //BEWARE OF CONCURRENCY ISSUES
+    //POTENTIAL FOR SPEEDUP / LESS STORAGE
+    //BEWARE OF CONCURRENCY ISSUES
 
-  //Mark each song and playlist as recorded
-  const untracked = new Set()
-  await Promise.all(
-    req.body.tracks.map(async track => {
-        try {
-          await db.none(`INSERT INTO names VALUES('${track}','${req.body.playlist.id}')`)
-          untracked.add(track)
-        } catch (error) {
-          //If it already exists it will error without marking the track as untracked
+    //Mark each song and playlist as recorded
+    const untracked = new Set()
+    await Promise.all(
+      req.body.tracks.map(async track => {
+          try {
+            await db.none(`INSERT INTO names VALUES('${track}','${req.body.playlist.id}')`)
+            untracked.add(track)
+          } catch (error) {
+            //If it already exists it will error without marking the track as untracked
+          }
         }
-      }
+      )
     )
-  )
 
-  //Only update correlation if at least one of the tracks is untracked
-  await Promise.all(
-    getCombinations(req.body.tracks).filter(combo => untracked.has(combo[0]) || untracked.has(combo[1])).map(
-      async combo => {
-        //Upsert correlation count
-        await db.none(`
-          INSERT INTO correlations VALUES('${combo[0]}','${combo[1]}',1)
-          ON CONFLICT (songA, songB) DO
-          UPDATE SET count = correlations.count + 1
-          `)
-      }
+    //Only update correlation if at least one of the tracks is untracked
+    await Promise.all(
+      getCombinations(req.body.tracks).filter(combo => untracked.has(combo[0]) || untracked.has(combo[1])).map(
+        async combo => {
+          //Upsert correlation count
+          await db.none(`
+            INSERT INTO correlations VALUES('${combo[0]}','${combo[1]}',1)
+            ON CONFLICT (songA, songB) DO
+            UPDATE SET count = correlations.count + 1
+            `)
+        }
+      )
     )
-  )
-  res.json({success : true})
+
+    res.json({success : true})
+  }catch (error){
+    console.error(`${"/api/contribute"} ${error}`)
+    res.status(500).json({error: "Something went wrong."})
+  }
+  
 })
 
 app.get('/api/correlations', async (req, res) => {
-  const correlations = []
-  await Promise.all(getCombinations(req.query.track_ids).map(async combo => {
-    const data = await db.any(`SELECT * FROM correlations WHERE songA = '${combo[0]}' AND songB = '${combo[1]}'`)
-    correlations.push(...data)
-  }))
-  res.json({correlations: correlations.sort((a, b) => a.count - b.count).reverse().slice(0, 100)})
+  if(!req.query.track_ids){
+    res.status(400).json({ error: 'Missing track ids.' });
+    return
+  }
+
+  try{
+    const correlations = []
+    await Promise.all(getCombinations(req.query.track_ids).map(async combo => {
+      const data = await db.any(`SELECT * FROM correlations WHERE songA = '${combo[0]}' AND songB = '${combo[1]}'`)
+      correlations.push(...data)
+    }))
+    res.json({correlations: correlations.sort((a, b) => a.count - b.count).reverse().slice(0, 100)})
+  }catch(error){
+    console.error(`${"/api/correlations"} ${error}`)
+    res.status(500).json({error: "Something went wrong."})
+  }
+  
 })
 
 // /api/neighbours
@@ -222,32 +246,37 @@ app.get('/api/neighbours', async (req, res) => {
   const explored = new Set()
   const ids = new Set()
   const neighbours = [] //May contain duplicates
-
-  for(var i = 0; i < req.query.radius; i++){
-    const next_ids = []
-    track_ids.forEach(track_id => explored.add(track_id))
-
-    //Request all neighbours for all tracks
-    await Promise.all(track_ids.map(async track_id => {
-      var correlations = (await db.any(`SELECT * FROM correlations WHERE songA = '${track_id}' OR songB = '${track_id}'`))
-      correlations = correlations.sort((a, b) => a.count - b.count).reverse().slice(0, 5)
-      neighbours.push(...correlations)
-      correlations.forEach((neighbour) => {
-        ids.add(neighbour.songa)
-        ids.add(neighbour.songb)
-        if(!explored.has(neighbour.songa)){
-          next_ids.push(neighbour.songa)
-        }
-        if(!explored.has(neighbour.songb)){
-          next_ids.push(neighbour.songb)
-        }
-      })
-    }))
-
-    track_ids = next_ids
+  try{
+    for(var i = 0; i < req.query.radius; i++){
+      const next_ids = []
+      track_ids.forEach(track_id => explored.add(track_id))
+  
+      //Request all neighbours for all tracks
+      await Promise.all(track_ids.map(async track_id => {
+        var correlations = (await db.any(`SELECT * FROM correlations WHERE songA = '${track_id}' OR songB = '${track_id}'`))
+        correlations = correlations.sort((a, b) => a.count - b.count).reverse().slice(0, 5)
+        neighbours.push(...correlations)
+        correlations.forEach((neighbour) => {
+          ids.add(neighbour.songa)
+          ids.add(neighbour.songb)
+          if(!explored.has(neighbour.songa)){
+            next_ids.push(neighbour.songa)
+          }
+          if(!explored.has(neighbour.songb)){
+            next_ids.push(neighbour.songb)
+          }
+        })
+      }))
+  
+      track_ids = next_ids
+    }
+  }catch(error){
+    console.error(`${"/api/neighbours"} ${error}`)
+    res.status(500).json({error: "Something went wrong."})
+    return
   }
   
-  for(var i = 0; i < 3; i++){ //Attempt 3 times
+  for(var i = 0; i < RETRY; i++){ //Attempt 3 times
     try {
       //Use general token
       const response = await axios({
@@ -263,56 +292,63 @@ app.get('/api/neighbours', async (req, res) => {
       res.json({neighbours : neighbours, tracks : response.data.tracks})
       break
     } catch (error) {
-      console.log(error)
       if(error.status !== 401){
+        console.error(`${"/api/neighbours"} ${error}`)
+        res.status(500).json({error: "Something went wrong."})
         break
       }
       await refreshToken()
     }
   }
+  
 })
 
 app.get('/api/region-name', async (req, res) => {
-  const playlists = []
-  await Promise.all(
-    req.query.tracks.map(async track => {
-      const data = await db.any(`SELECT playlist FROM names WHERE song = '${track}'`)
-      playlists.push(...data.map(item => item.playlist))
+  try{
+    const playlists = []
+    await Promise.all(
+      req.query.tracks.map(async track => {
+        const data = await db.any(`SELECT playlist FROM names WHERE song = '${track}'`)
+        playlists.push(...data.map(item => item.playlist))
+      })
+    )
+    const vectors = []
+    await Promise.all(
+      playlists.map(async playlist => {
+        const vectorItem = await db.one(`SELECT embedding FROM embeddings WHERE playlist = '${playlist}'`)
+        const vectorString = vectorItem.embedding
+        vectors.push(vectorString.slice(1, -1).split(',').map(Number))
+      })
+    )
+    //K means 
+    const {centroids, clusters} = manyKMeansWithSilhouette(vectors, 1, Math.min(3, vectors.length))
+    
+    //Get playlist name for centroid of largest cluster
+    var maxClusterSize = 0
+    var maxClusterIndex = 0
+    clusters.forEach((cluster, i) => {
+      if(cluster.length > maxClusterSize){
+        maxClusterIndex = i
+        maxClusterSize = cluster.length
+      } 
     })
-  )
-  const vectors = []
-  await Promise.all(
-    playlists.map(async playlist => {
-      const vectorItem = await db.one(`SELECT embedding FROM embeddings WHERE playlist = '${playlist}'`)
-      const vectorString = vectorItem.embedding
-      vectors.push(vectorString.slice(1, -1).split(',').map(Number))
-    })
-  )
-  //K means 
-  const {centroids, clusters} = manyKMeansWithSilhouette(vectors, 1, Math.min(3, vectors.length))
-  
-  //Get playlist name for centroid of largest cluster
-  var maxClusterSize = 0
-  var maxClusterIndex = 0
-  clusters.forEach((cluster, i) => {
-    if(cluster.length > maxClusterSize){
-      maxClusterIndex = i
-      maxClusterSize = cluster.length
-    } 
-  })
-  
-  const data = await db.one(`SELECT * FROM embeddings ORDER BY embedding <=> '[${centroids[maxClusterIndex].toString()}]' LIMIT 1`)
-  const bestPlaylist = data.playlist
-  const vector = data.embedding.slice(1, -1).split(',').map(Number).slice(0, 2)
+    
+    const data = await db.one(`SELECT * FROM embeddings ORDER BY embedding <=> '[${centroids[maxClusterIndex].toString()}]' LIMIT 1`)
+    const bestPlaylist = data.playlist
+    const vector = data.embedding.slice(1, -1).split(',').map(Number).slice(0, 2)
 
-  const response = await axios({
-    method: 'get',
-    url: `https://api.spotify.com/v1/playlists/${bestPlaylist}`,
-    headers: {
-      'Authorization': 'Bearer ' + await readGlobalSpotifyToken(),
-    }
-  })
-  res.json({name : response.data.name, vector : vector})
+    const response = await axios({
+      method: 'get',
+      url: `https://api.spotify.com/v1/playlists/${bestPlaylist}`,
+      headers: {
+        'Authorization': 'Bearer ' + await readGlobalSpotifyToken(),
+      }
+    })
+    res.json({name : response.data.name, vector : vector})
+  }catch (error){
+    console.error(`${"/api/region-name"} ${error}`)
+    res.status(500).json({error: "Something went wrong."})
+  }
 })  
 
 // /api/login-state
@@ -351,8 +387,8 @@ app.put('/api/play-track', (req, res) => {
     }
   ).catch(
     error => {
-      console.log(error)
-      //bruh
+      console.error(`${"/api/play-track"} ${error}`)
+      res.status(500).json({error: "Something went wrong."})
     }
   )
 })
@@ -370,8 +406,8 @@ app.get('/api/current-playing-track', (req, res) => {
     }
   ).catch(
     error => {
-      console.log(error)
-      //bruh
+      console.error(`${"/api/current-playing-track"} ${error}`)
+      res.status(500).json({error: "Something went wrong."})
     }
   )
 })
@@ -381,7 +417,7 @@ app.get('/api/callback', (req, res) => {
   var state = req.query.state || null;
 
   if (state === null) {
-    //lol
+    res.status(400).json({error: "State mismatch."})
   } else {
     axios({
       method: 'post',
@@ -402,7 +438,8 @@ app.get('/api/callback', (req, res) => {
       }
     ).catch(
       (error)=> {
-        //oopsy
+        console.error(`${"/api/callback"} ${error}`)
+        res.status(500).json({error: "Something went wrong."})
       }
     )
   }
@@ -422,95 +459,75 @@ app.get('/api/login', (req, res) => {
     }));
 })
 
-
-
-
-// app.get('/api/user-playlists', async (req, res) => {
-//   var result = []
-//   var offset = 0
-
-//   while(true){
-//     const response = await axios({
-//       method: 'get',
-//       url : 'https://api.spotify.com/v1/me/playlists',
-//       headers: {
-//         'Authorization': 'Bearer ' + req.cookies['spotify_token'],
-//       },
-//       params: {
-//         offset: offset, 
-//         limit: 50
-//       }
-//     })
-//     result = result.concat(response.data.items)
-//     if(!response.data.next){
-//       break
-//     }
-    
-//     offset += 50
-//   }
-//   res.json({playlists: result})
-// })
-
 app.post('/api/constellation', async (req, res) => {
   //Get user id  
-  var profileRequest = await axios({
-    method: 'get',
-    url : 'https://api.spotify.com/v1/me/',
-    headers: {
-      'Authorization': 'Bearer ' + req.cookies['spotify_token'],
-    }
-  })
-  const userID = profileRequest.data.id
-  const username = profileRequest.data.display_name
-
-  //Get tracks and store in database
-  var trackRequest = await axios({
-    method: 'get',
-    url : 'https://api.spotify.com/v1/me/top/tracks',
-    headers: {
-      'Authorization': 'Bearer ' + req.cookies['spotify_token'],
-    },
-    params: {
-      offset: 0, 
-      limit: 25,
-      time_range: 'short_term'
-    }
-  })
-  const topTracks = trackRequest.data.items.map(track => track.id)
-  await db.none(`DELETE FROM toptracks WHERE id = '${userID}'`)
-  await db.none(`DELETE FROM users WHERE id = '${userID}'`)
-  await db.none(`INSERT INTO users VALUES('${userID}','${username ? username : "Unknown"}')`)
-
-  await Promise.all(topTracks.map(async (trackId, i)=>{
-    await db.none(`INSERT INTO toptracks VALUES('${userID}','${trackId}', ${i})`)
-  }))
-  res.json({success : true})
+  try{
+    var profileRequest = await axios({
+      method: 'get',
+      url : 'https://api.spotify.com/v1/me/',
+      headers: {
+        'Authorization': 'Bearer ' + req.cookies['spotify_token'],
+      }
+    })
+    const userID = profileRequest.data.id
+    const username = profileRequest.data.display_name
+  
+    //Get tracks and store in database
+    var trackRequest = await axios({
+      method: 'get',
+      url : 'https://api.spotify.com/v1/me/top/tracks',
+      headers: {
+        'Authorization': 'Bearer ' + req.cookies['spotify_token'],
+      },
+      params: {
+        offset: 0, 
+        limit: 25,
+        time_range: 'short_term'
+      }
+    })
+    const topTracks = trackRequest.data.items.map(track => track.id)
+    await db.none(`DELETE FROM toptracks WHERE id = '${userID}'`)
+    await db.none(`DELETE FROM users WHERE id = '${userID}'`)
+    await db.none(`INSERT INTO users VALUES('${userID}','${username ? username : "Unknown"}')`)
+  
+    await Promise.all(topTracks.map(async (trackId, i)=>{
+      await db.none(`INSERT INTO toptracks VALUES('${userID}','${trackId}', ${i})`)
+    }))
+    res.json({success : true})
+  }catch(error){
+    console.error(`${"/api/constellation"} ${error}`)
+    res.status(500).json({error: "Something went wrong."})
+  }
 })
 
 app.get('/api/constellation', async (req, res) => {
-  var userID = req.query.user
+  try{
+    var userID = req.query.user
+    const topTracks = await db.any(`SELECT * FROM toptracks WHERE id = '${userID}'`)
+    const rankings = {}
+    topTracks.forEach((data) => {rankings[data.song] = data.ranking})
 
-  const topTracks = await db.any(`SELECT * FROM toptracks WHERE id = '${userID}'`)
-  const rankings = {}
-  topTracks.forEach((data) => {rankings[data.song] = data.ranking})
+    var tracks = []
+    if(topTracks.length > 0){
+      tracks = (await axios({
+        method: 'get',
+        url : `https://api.spotify.com/v1/tracks`,
+        headers: {
+          'Authorization': 'Bearer ' + await readGlobalSpotifyToken(),
+        },
+        params: {
+          ids: topTracks.map(data => data.song).join(",")
+        }
+      })).data.tracks
+    }
 
-  var tracks = []
-  if(topTracks.length > 0){
-    tracks = (await axios({
-      method: 'get',
-      url : `https://api.spotify.com/v1/tracks`,
-      headers: {
-        'Authorization': 'Bearer ' + await readGlobalSpotifyToken(),
-      },
-      params: {
-        ids: topTracks.map(data => data.song).join(",")
-      }
-    })).data.tracks
+    const name = await db.any(`SELECT * FROM users WHERE id = '${userID}'`)
+
+    res.json({rankings : rankings, tracks : tracks, name : name})
+  }catch(error){
+    console.error(`${"/api/constellation"} ${error}`)
+    res.status(500).json({error: "Something went wrong."})
   }
-
-  const name = await db.any(`SELECT * FROM users WHERE id = '${userID}'`)
-
-  res.json({rankings : rankings, tracks : tracks, name : name})
 })
 
 app.listen(8888, ()=>{
