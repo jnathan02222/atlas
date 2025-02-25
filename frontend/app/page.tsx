@@ -1461,7 +1461,9 @@ function Map({loggedIn, handleLogout, userId, defaultConstellationState} : {logg
 }
 
 export default function App() {
-  const currentParams = new URLSearchParams(window ? window.location.search : "")
+  const isBrowser = typeof window !== "undefined"
+  
+  const currentParams = new URLSearchParams(isBrowser ? window.location.search : "")
   const viewConstellation = currentParams.has('constellation')
 
   const [showMap, setShowMap] = useState(viewConstellation)
