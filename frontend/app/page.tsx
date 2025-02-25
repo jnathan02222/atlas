@@ -469,7 +469,7 @@ function Vinyls({constellationMode, loggedIn, userId} : {constellationMode : boo
         acceleration : {x : 0, y : 0}, 
         opacity : 0,
         song : {name : track.name, author : track.artists.map((artist : Record<string, any>) => artist.name).join(', '), album : track.album.name, id : track.id, play : true},
-        size : 0.1 + response.data.rankings[track.id]/100, 
+        size : 0.35 - response.data.rankings[track.id]/100, 
         movementDamp : 0.5
       }
       angle += (2*Math.PI)/25
