@@ -337,14 +337,28 @@ app.get('/api/region-name', async (req, res) => {
     const bestPlaylist = data.playlist
     const vector = data.embedding.slice(1, -1).split(',').map(Number).slice(0, 2)
 
-    const response = await axios({
-      method: 'get',
-      url: `https://api.spotify.com/v1/playlists/${bestPlaylist}`,
-      headers: {
-        'Authorization': 'Bearer ' + await readGlobalSpotifyToken(),
+    for(var i = 0; i < RETRY; i++){ //Attempt 3 times
+      try {
+        //Use general token
+        const response = await axios({
+          method: 'get',
+          url: `https://api.spotify.com/v1/playlists/${bestPlaylist}`,
+          headers: {
+            'Authorization': 'Bearer ' + await readGlobalSpotifyToken(),
+          }
+        })
+        res.json({name : response.data.name, vector : vector})
+        break
+      } catch (error) {
+        if(error.status !== 401){
+          console.error(`${"/api/neighbours"} ${error}`)
+          res.status(500).json({error: "Something went wrong."})
+          break
+        }
+        await refreshToken()
       }
-    })
-    res.json({name : response.data.name, vector : vector})
+    }
+
   }catch (error){
     console.error(`${"/api/region-name"} ${error}`)
     res.status(500).json({error: "Something went wrong."})
@@ -509,16 +523,29 @@ app.get('/api/constellation', async (req, res) => {
 
     var tracks = []
     if(topTracks.length > 0){
-      tracks = (await axios({
-        method: 'get',
-        url : `https://api.spotify.com/v1/tracks`,
-        headers: {
-          'Authorization': 'Bearer ' + await readGlobalSpotifyToken(),
-        },
-        params: {
-          ids: topTracks.map(data => data.song).join(",")
+      for(var i = 0; i < RETRY; i++){ //Attempt 3 times
+        try {
+          //Use general token
+          tracks = (await axios({
+            method: 'get',
+            url : `https://api.spotify.com/v1/tracks`,
+            headers: {
+              'Authorization': 'Bearer ' + await readGlobalSpotifyToken(),
+            },
+            params: {
+              ids: topTracks.map(data => data.song).join(",")
+            }
+          })).data.tracks
+          break
+        } catch (error) {
+          if(error.status !== 401){
+            console.error(`${"/api/neighbours"} ${error}`)
+            res.status(500).json({error: "Something went wrong."})
+            return
+          }
+          await refreshToken()
         }
-      })).data.tracks
+      }
     }
 
     const name = await db.any(`SELECT * FROM users WHERE id = '${userID}'`)
