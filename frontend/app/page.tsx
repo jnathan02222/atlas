@@ -1462,7 +1462,7 @@ function Map({loggedIn, handleLogout, userId, defaultConstellationState} : {logg
 
 export default function App() {
   const isBrowser = typeof window !== "undefined"
-  
+
   const currentParams = new URLSearchParams(isBrowser ? window.location.search : "")
   const viewConstellation = currentParams.has('constellation')
 
@@ -1473,7 +1473,6 @@ export default function App() {
   const [playerWidth, setPlayerWidth] = useState(0)
   const [loggedIn, setLoggedIn] = useState(false)
   const [userId, setUserId] = useState(currentParams.get('constellation'))
-
   useEffect(()=>{
     if(!viewConstellation){
       axios({
@@ -1512,7 +1511,10 @@ export default function App() {
             setShowMap(false) //Instantly, otherwise looks dumb
             if(player) player.disconnect()
             setPlayer(null)
+          
             setLoggedIn(false)
+            setUserId(currentParams.get('constellation'))
+
             document.cookie = `spotify_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`
 
             }}
