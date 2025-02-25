@@ -27,6 +27,10 @@ function getCombinations(list : Array<any>) {
   return result
 }
 
+function average(...numbers : number[]) {
+  return numbers.reduce((sum, num) => sum + num, 0) / numbers.length;
+}
+
 function getDistanceAndAngle(x1 : number, y1 : number, x2 : number, y2 : number) {
   const dx = x2 - x1;
   const dy = y2 - y1;
@@ -238,7 +242,7 @@ function Player({darkMode} : {darkMode : boolean}){  //<div className="bg-black 
   const authorRef = useRef<HTMLHeadingElement>(null)
 
   useEffect(()=>{
-    if(nameRef.current && authorRef.current){
+    if(selectedSong.id !== "" && nameRef.current && authorRef.current){
       setMaxWidth(Math.min(Math.max(nameRef.current.clientWidth, authorRef.current.clientWidth), 600))
     }
 
@@ -422,7 +426,10 @@ function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, lo
   const mouseStart = useRef({x:0, y:0})
   const cameraStart = useRef({x:0, y:0})
   
-  async function getConstellation(){
+
+ 
+
+  async function getConstellation(regenerate : boolean){
     if(!loggedIn){
       return
     }
@@ -432,7 +439,7 @@ function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, lo
       method: 'get',
       url: '/api/constellation'
     }))
-    if(response.data.tracks.length === 0){
+    if(regenerate || response.data.tracks.length === 0){
       await axios({method: 'post', url: '/api/constellation'})
       response = (await axios({
         method: 'get',
@@ -462,21 +469,70 @@ function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, lo
     })
     
     correlations.current = {}
-
     const newCorrellations = (await axios({method: 'get', url: '/api/correlations', params: {track_ids: Object.keys(response.data.rankings)}})).data.correlations
     newCorrellations.forEach((correlation : Correlation) => {
       correlations.current[`${correlation.songa}:${correlation.songb}`] = correlation.count
     })
     
-    setDiscs(updatedDiscs)
+    const labels : Record<string, Array<string>> = {}
+    mappedSongs.current = new Set()
+    response.data.tracks.map((track : Record<string, any>) => {
+      //Get all neighbours that have not been mapped
+      const neighbours = newCorrellations.filter((c : Correlation) => (track.id === c.songa || track.id === c.songb) && !mappedSongs.current.has(c.songa) && !mappedSongs.current.has(c.songb))      
+      if(neighbours.length > 0){
+        const trackIds = [track.id, ...neighbours.map((c : Correlation) => track.id !== c.songa ? c.songa : c.songb)]
+        const labelTag = `_${track.id}`
+        updatedDiscs[labelTag] = {
+          ...updatedDiscs[track.id],
+        }
+        correlations.current[`${track.id}:${labelTag}`] = 1
+        labels[labelTag] = trackIds
 
+        neighbours.forEach((c : Correlation) => {
+          mappedSongs.current.add(c.songa)
+          mappedSongs.current.add(c.songb)
+        })
+      }
+    })
+
+    await Promise.all(Object.entries(labels).map(async ([labelTag, trackIds]) => {
+      const response : Record<string, any> = await axios({
+        method: 'get',
+        url: '/api/region-name',
+        params: {
+          tracks: trackIds
+        }
+      })
+      updatedDiscs[labelTag].song = {name : response.data.name, album : "", author : "", id : "", play : false} 
+      updatedDiscs[labelTag].x = average(...trackIds.map(id => updatedDiscs[id].x))
+      updatedDiscs[labelTag].y = average(...trackIds.map(id => updatedDiscs[id].y))
+      updatedDiscs[labelTag].size = 0.5
+    }))
+    //Constellation name
+    // updatedDiscs["_"] = {
+    //   x : -radius*1.2, 
+    //   y : -radius*1.2, 
+    //   image : Math.floor(Math.random()*images.length), 
+    //   velocity : {x : 0, y : 0}, 
+    //   acceleration : {x : 0, y : 0}, 
+    //   opacity : 0,
+    //   song : {name : `${response.data.name[0].name}`, album : "", author : "", id : "", play : false},
+    //   size : 1, 
+    //   movementDamp : 0
+    // }
+    setDiscs(updatedDiscs)
+    zoomTarget.current = ZOOM_MIN+0.2
     cameraTarget.current = {x: 0, y: 0}
+    
+
+
+
   }
   useEffect(()=>{
     setDiscs({})
     correlations.current = {}
     mappedSongs.current = new Set()
-    if(constellationMode) getConstellation()
+    if(constellationMode) getConstellation(false)
   },[constellationMode])
 
 
@@ -523,12 +579,12 @@ function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, lo
       method: 'get',
       url: '/api/neighbours',
       params: {
-        track_id: selectedSong.id
+        track_id: selectedSong.id,
+        radius: 1
       }
     })
   
     const neighbours : Array<Correlation> = response.data.neighbours 
-
     const tracks : Record<string, Song> = {}
     response.data.tracks.forEach((track : Record<string, any>)=>{
       tracks[track.id] = {name : track.name, author : track.artists.map((artist : Record<string, any>) => artist.name).join(', '), album : track.album.name, id : track.id, play : true}
@@ -659,13 +715,13 @@ function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, lo
       const isLabel = id.includes("_")
       const x = isLabel ? disc.x - LABEL_WIDTH/2: disc.x 
       const y = isLabel ? disc.y - LABEL_HEIGHT/2: disc.y 
-      if(getRenderedX(x) < maxWidth + 64 + DISC_SIZE/2*zoom && getRenderedY(y) < 160 + DISC_SIZE/2*zoom){
+      if(selectedSong.id !== "" && getRenderedX(x) < maxWidth + 64 + DISC_SIZE/2*zoom && getRenderedY(y) < 160 + DISC_SIZE/2*zoom){
         fadedDisks.current.add(id)
       }else{
         fadedDisks.current.delete(id)
       }
     }
-  }, [zoom, camera, maxWidth])
+  }, [zoom, camera, maxWidth, selectedSong])
 
 
 
@@ -782,8 +838,8 @@ function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, lo
           const discB = updatedDiscs[combo[1]]
           var distanceAndAngle = getDistanceAndAngle(discA.x, discA.y, discB.x, discB.y)
           
-          const minDistance = combo[0].includes("_") ? LABEL_WIDTH/1.5 : 100 + combo[1].includes("_") ? LABEL_WIDTH/1.5 : 100
-          if(!constellationMode && distanceAndAngle.distance < minDistance){
+          const minDistance = !constellationMode ? (combo[0].includes("_") ? LABEL_WIDTH/1.5 : 100 + combo[1].includes("_") ? LABEL_WIDTH/1.5 : 100) : 100
+          if(distanceAndAngle.distance < minDistance){
             const difference = getXYDifference(minDistance-distanceAndAngle.distance, distanceAndAngle.angle)
             discA.x -= difference.dx/2
             discA.y -= difference.dy/2
@@ -877,6 +933,7 @@ function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, lo
   const discsAvailable = Object.values(discs).length !== 0 
   return ( 
     <>
+      {constellationMode && loggedIn && <button onClick={()=>{getConstellation(true)}} className={`z-10 bg-black text-white border-[#887880] hover:border-white transition-colors duration-300 border-2 p-2 h-12 rounded-md cursor-pointer`}>Regenerate</button>    }
       {/*discsAvailable && <div className="absolute w-screen h-screen flex flex-col items-start justify-center top-0 left-0 p-16">
         <button style={{width: 20, height: 20}} className={`z-10 bg-white transition-colors duration-300 border-2 p-2 font-bold rounded-md ${zoom < ZOOM_MAX ? "text-gray-500 cursor-pointer  hover:border-[#887880]" : "text-gray-300 cursor-not-allowed"}  `} onClick={()=>{if(zoomTarget.current < ZOOM_MAX) zoomTarget.current+=0.2}}>
         
@@ -885,7 +942,7 @@ function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, lo
 
         </button>
       </div>*/
-
+        
       discsAvailable && <div className="absolute w-screen h-screen flex flex-col items-end justify-center top-0 left-0 p-16">
         <div className="z-10 flex flex-col justify-center">
           <p className="text-center">+</p>
@@ -944,7 +1001,7 @@ function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, lo
                   getRenderedX(discs[songB].x), 
                   getRenderedY(discs[songB].y)
                 ]} // (x1, y1, x2, y2)
-                stroke={constellationMode ? "#d5d5d5" : (focused ? "#eeeeee" : "#f5f5f5")}
+                stroke={constellationMode ? "#757575" : (focused ? "#eeeeee" : "#f5f5f5")}
                 strokeWidth={focused ? 5*zoom : 4*zoom} //Style based on focus?
                 lineCap="round"
                 lineJoin="round"
@@ -1003,14 +1060,14 @@ function Vinyls({constellationMode, loggedIn} : {constellationMode : boolean, lo
                     text={disc.song.name}
                     x={getRenderedX(disc.x-(LABEL_WIDTH-100)/2)}           
                     y={getRenderedY(disc.y)}  
-                    fontSize={LABEL_HEIGHT*zoom}
+                    fontSize={constellationMode ? LABEL_HEIGHT*disc.size*zoom : LABEL_HEIGHT*zoom}
                     fontFamily="Noto Serif, Noto Sans JP, Noto Sans KR, Noto Sans TC"
                     width={(LABEL_WIDTH-100)*zoom}
                     ellipsis={true}
                     wrap="none"
                     opacity={disc.opacity}
                     align="center"
-                    fill={'#757575'}
+                    fill={constellationMode ? '#e5e5e5' : '#757575'}
                   ></Text>
                 </Group>
               )
@@ -1288,7 +1345,7 @@ function Map({loggedIn, handleLogout, userId} : {loggedIn : boolean, handleLogou
           <Player darkMode={constellationMode}></Player>
           <button onClick={handleLogout} className={`z-10 ${constellationMode ? "bg-black text-white border-[#887880] hover:border-white" : "bg-white text-gray-700 hover:border-[#887880]"} border-2 p-2 h-12 rounded-md cursor-pointer`}>Log Out</button>
         </div>
-        <Vinyls loggedIn={loggedIn} constellationMode={constellationMode}></Vinyls>
+
         <div className="flex justify-between items-end">
           <div className="flex gap-1 items-end">
             <button onClick={()=>{
@@ -1299,10 +1356,11 @@ function Map({loggedIn, handleLogout, userId} : {loggedIn : boolean, handleLogou
             </button>
             
             <Search darkMode={constellationMode}></Search>
+            <Vinyls loggedIn={loggedIn} constellationMode={constellationMode}></Vinyls>
+
             <div className={`transition-all duration-500 flex gap-2 ${constellationMode ? "" : "opacity-0"}`}>
             {constellationMode && loggedIn && 
             <>
-              <button className={`z-10 bg-black text-white border-[#887880] hover:border-white transition-colors duration-300 border-2 p-2 h-12 rounded-md cursor-pointer`}>Regenerate</button>
               <button 
               onClick={()=>{
                 navigator.clipboard.writeText(`${window.location.href}?constellation=${userId}`)

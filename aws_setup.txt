@@ -5,6 +5,7 @@ CREATE TABLE names (song VARCHAR(22), playlist VARCHAR(22), PRIMARY KEY (song, p
 CREATE TABLE correlations (songA VARCHAR(22), songB VARCHAR(22), count INT, PRIMARY KEY (songA, songB));
 CREATE TABLE embeddings (playlist VARCHAR(22) PRIMARY KEY, embedding vector(512));
 CREATE TABLE toptracks (id TEXT, song VARCHAR(22), ranking INT);
+CREATE TABLE users (id TEXT PRIMARY KEY, name TEXT);
 //Create indexes?
 CREATE INDEX song_index ON names (song);
 CREATE INDEX songa_index ON correlations (songa);

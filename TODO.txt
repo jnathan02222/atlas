@@ -132,11 +132,15 @@ contribution
 jams should work in theory 
 
 
-Correlations DONE
+Constellation label DONE
+Name label DONE
+Regenerate button DONE
 
-Swapping between modes (marquee transition does not work) NAH 
-cluster names 
+Larger search radius (probably easier to do backend) DONE
+Refresh token 
+Backend error handling
 
-Regenerate button 
-Sharing constellations
-User name next to constellation?
+Sharing
+	Preserve url parameters in callback
+	Require login, but go straight to constellation page
+	Clicking on map opens a new tab

@@ -216,18 +216,35 @@ app.get('/api/correlations', async (req, res) => {
 
 // /api/neighbours
 app.get('/api/neighbours', async (req, res) => {
-  const track_id = req.query.track_id
-  //console.log(track_id)
+  var track_ids = [req.query.track_id]
+  const explored = new Set()
+  const ids = new Set()
+  const neighbours = [] //May contain duplicates
 
-  const data = await db.any(`SELECT * FROM correlations WHERE songA = '${track_id}' OR songB = '${track_id}'`)
-  //console.log(data)
-  //Select all playlists that contain the song 
-  //Get vectors for each playlist
-  //K cluster
-  //console.log(data.sort((a, b) => a.count - b.count).reverse())
-  const neighbours = data.sort((a, b) => a.count - b.count).reverse().slice(0, 5)
-  const ids = [...neighbours.map((neighbour) => neighbour.songa !== track_id ? neighbour.songa : neighbour.songb), track_id]
+  for(var i = 0; i < req.query.radius; i++){
+    const next_ids = []
+    track_ids.forEach(track_id => explored.add(track_id))
 
+    //Request all neighbours for all tracks
+    await Promise.all(track_ids.map(async track_id => {
+      var correlations = (await db.any(`SELECT * FROM correlations WHERE songA = '${track_id}' OR songB = '${track_id}'`))
+      correlations = correlations.sort((a, b) => a.count - b.count).reverse().slice(0, 5)
+      neighbours.push(...correlations)
+      correlations.forEach((neighbour) => {
+        ids.add(neighbour.songa)
+        ids.add(neighbour.songb)
+        if(!explored.has(neighbour.songa)){
+          next_ids.push(neighbour.songa)
+        }
+        if(!explored.has(neighbour.songb)){
+          next_ids.push(neighbour.songb)
+        }
+      })
+    }))
+
+    track_ids = next_ids
+  }
+  
   for(var i = 0; i < 3; i++){ //Attempt 3 times
     try {
       //Use general token
@@ -238,7 +255,7 @@ app.get('/api/neighbours', async (req, res) => {
           'Authorization': 'Bearer ' + await readGlobalSpotifyToken(),
         },
         params: {
-          ids: ids.join(",")
+          ids: [...ids].join(",")
         }
       })
       res.json({neighbours : neighbours, tracks : response.data.tracks})
@@ -378,6 +395,7 @@ app.get('/api/callback', (req, res) => {
     }).then(
       (response) => {
         res.cookie('spotify_token', response.data.access_token);
+        //res.cookie('spotify_refresh_token', response.data.refresh_token)
         res.redirect(process.env.WEBSITE_URL)
       }
     ).catch(
@@ -401,6 +419,8 @@ app.get('/api/login', (req, res) => {
       state: state
     }));
 })
+
+
 
 
 // app.get('/api/user-playlists', async (req, res) => {
@@ -439,6 +459,7 @@ app.post('/api/constellation', async (req, res) => {
     }
   })
   const userID = profileRequest.data.id
+  const username = profileRequest.data.display_name
 
   //Get tracks and store in database
   var trackRequest = await axios({
@@ -450,11 +471,14 @@ app.post('/api/constellation', async (req, res) => {
     params: {
       offset: 0, 
       limit: 25,
-      time_range: 'long_term'
+      time_range: 'short_term'
     }
   })
   const topTracks = trackRequest.data.items.map(track => track.id)
   await db.none(`DELETE FROM toptracks WHERE id = '${userID}'`)
+  await db.none(`DELETE FROM users WHERE id = '${userID}'`)
+  await db.none(`INSERT INTO users VALUES('${userID}','${username ? username : "Unknown"}')`)
+
   await Promise.all(topTracks.map(async (trackId, i)=>{
     await db.none(`INSERT INTO toptracks VALUES('${userID}','${trackId}', ${i})`)
   }))
@@ -463,7 +487,7 @@ app.post('/api/constellation', async (req, res) => {
 
 app.get('/api/constellation', async (req, res) => {
   var userID = req.query.user
-  //User current use if non provided
+  //User current user if non provided
   if(!userID){
     var profileRequest = await axios({
       method: 'get',
@@ -493,7 +517,9 @@ app.get('/api/constellation', async (req, res) => {
     })).data.tracks
   }
 
-  res.json({rankings : rankings, tracks : tracks})
+  const name = await db.any(`SELECT * FROM users WHERE id = '${userID}'`)
+
+  res.json({rankings : rankings, tracks : tracks, name : name})
 })
 
 app.listen(8888, ()=>{
