@@ -16,7 +16,7 @@ const db = pgp({
   database: 'music_db',         
   user: 'postgres',           
   password: process.env.DB_PASSWORD,   
-  ssl: { rejectUnauthorized: false }
+  //ssl: { rejectUnauthorized: false }
 })
 
 const { manyKMeansWithSilhouette } = require('clustering')
@@ -279,17 +279,21 @@ app.get('/api/neighbours', async (req, res) => {
   for(var i = 0; i < RETRY; i++){ //Attempt 3 times
     try {
       //Use general token
-      const response = await axios({
-        method: 'get',
-        url : `https://api.spotify.com/v1/tracks`,
-        headers: {
-          'Authorization': 'Bearer ' + await readGlobalSpotifyToken(),
-        },
-        params: {
-          ids: [...ids].join(",")
-        }
-      })
-      res.json({neighbours : neighbours, tracks : response.data.tracks})
+      var tracks = []
+      if([...ids].length > 0){
+        const response = await axios({
+          method: 'get',
+          url : `https://api.spotify.com/v1/tracks`,
+          headers: {
+            'Authorization': 'Bearer ' + await readGlobalSpotifyToken(),
+          },
+          params: {
+            ids: [...ids].join(",")
+          }
+        })
+        tracks = response.data.tracks
+      }
+      res.json({neighbours : neighbours, tracks : tracks})
       break
     } catch (error) {
       if(error.status !== 401){

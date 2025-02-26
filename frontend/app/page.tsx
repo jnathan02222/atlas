@@ -616,7 +616,6 @@ function Vinyls({constellationMode, loggedIn, userId} : {constellationMode : boo
       })
       label = response.data.name
     }
-
     setDiscs(prev => {
       var updatedDisks = {...prev}
       //Check if there is a link between currently displayed songs and new songs
@@ -1511,7 +1510,7 @@ export default function App() {
             setShowMap(false) //Instantly, otherwise looks dumb
             if(player) player.disconnect()
             setPlayer(null)
-          
+
             setLoggedIn(false)
             setUserId(currentParams.get('constellation'))
 

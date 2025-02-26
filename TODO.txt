@@ -141,6 +141,7 @@ Backend error handling DONE?
 Lock frontend
 Refresh token 
 Add data to db
+Fix bug
 
 Sharing DONE
 	Preserve url parameters in callback NAH
