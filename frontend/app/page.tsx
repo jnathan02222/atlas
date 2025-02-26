@@ -1510,7 +1510,10 @@ export default function App() {
             setShowMap(false) //Instantly, otherwise looks dumb
             if(player) player.disconnect()
             setPlayer(null)
-
+            
+            //if(loggedIn){
+              //window.open("https://accounts.spotify.com/en/status")
+            //}
             setLoggedIn(false)
             setUserId(currentParams.get('constellation'))
 
