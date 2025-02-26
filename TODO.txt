@@ -140,8 +140,9 @@ Larger search radius (probably easier to do backend) DONE
 Backend error handling DONE?
 Lock frontend
 Refresh token 
+Make it so that you can see full label
 Add data to db
-Fix bug
+Fix uncharted territory bug DONE
 
 Sharing DONE
 	Preserve url parameters in callback NAH
