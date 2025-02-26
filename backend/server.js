@@ -16,7 +16,7 @@ const db = pgp({
   database: 'music_db',         
   user: 'postgres',           
   password: process.env.DB_PASSWORD,   
-  ssl: { rejectUnauthorized: false }
+  //ssl: { rejectUnauthorized: false }
 })
 
 const { manyKMeansWithSilhouette } = require('clustering')
@@ -230,9 +230,9 @@ app.get('/api/correlations', async (req, res) => {
     const correlations = []
     await Promise.all(getCombinations(req.query.track_ids).map(async combo => {
       const data = await db.any(`SELECT * FROM correlations WHERE songA = '${combo[0]}' AND songB = '${combo[1]}'`)
-      correlations.push(...data.sort((a, b) => a.count - b.count).reverse().slice(0, 1))
+      correlations.push(...data)
     }))
-    res.json({correlations: correlations})
+    res.json({correlations: correlations.sort((a, b) => a.count - b.count).reverse().slice(0, 50)})
   }catch(error){
     console.error(`${"/api/correlations"} ${error}`)
     res.status(500).json({error: "Something went wrong."})
