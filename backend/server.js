@@ -16,7 +16,7 @@ const db = pgp({
   database: 'music_db',         
   user: 'postgres',           
   password: process.env.DB_PASSWORD,   
-  ssl: { rejectUnauthorized: false }
+  ssl: process.env.PROD === 'true' ? { rejectUnauthorized: false } : null
 })
 
 const { manyKMeansWithSilhouette } = require('clustering')
@@ -474,7 +474,7 @@ app.get('/api/login', (req, res) => {
       scope: scope,
       redirect_uri: `${redirect_uri}`,
       state: state,
-      show_dialog: true
+      show_dialog: process.env.PROD
     }));
 })
 
@@ -501,7 +501,7 @@ app.post('/api/constellation', async (req, res) => {
       params: {
         offset: 0, 
         limit: 25,
-        time_range: 'short_term'
+        time_range: 'medium_term'
       }
     })
     const topTracks = trackRequest.data.items.map(track => track.id)

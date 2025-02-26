@@ -428,12 +428,13 @@ function Vinyls({constellationMode, loggedIn, userId} : {constellationMode : boo
   const cameraStart = useRef({x:0, y:0})
   
 
- 
+  const [gettingConstellation, setGettingConstellation] = useState(false)
 
   async function getConstellation(regenerate : boolean){
-    if(!userId){
+    if(!userId || gettingConstellation){
       return
     }
+    setGettingConstellation(true)
 
     //Get top tracks
     var response: Record<string, any> = (await axios({
@@ -534,7 +535,7 @@ function Vinyls({constellationMode, loggedIn, userId} : {constellationMode : boo
     zoomTarget.current = ZOOM_MIN+0.2
     cameraTarget.current = {x: 0, y: 0}
     
-
+    setGettingConstellation(false)
 
 
   }
@@ -942,11 +943,13 @@ function Vinyls({constellationMode, loggedIn, userId} : {constellationMode : boo
   const discsAvailable = Object.values(discs).length !== 0 
   return ( 
     <>
-      {constellationMode && loggedIn && <button onClick={()=>{
+      {constellationMode && loggedIn && <button onClick={()=>{ 
         setDiscs({})
         getConstellation(true)
         
-        }} className={`z-10 bg-black text-white border-[#887880] hover:border-white transition-colors duration-300 border-2 p-2 h-12 rounded-md cursor-pointer`}>Regenerate</button>    }
+        }} 
+        disabled={gettingConstellation}
+        className={`z-10 bg-black border-[#887880] transition-colors duration-300 border-2 p-2 h-12 rounded-md ${gettingConstellation ? "cursor-not-allowed text-[#887880]" : "cursor-pointer text-white hover:border-white "}`}>Regenerate</button>    }
       {/*discsAvailable && <div className="absolute w-screen h-screen flex flex-col items-start justify-center top-0 left-0 p-16">
         <button style={{width: 20, height: 20}} className={`z-10 bg-white transition-colors duration-300 border-2 p-2 font-bold rounded-md ${zoom < ZOOM_MAX ? "text-gray-500 cursor-pointer  hover:border-[#887880]" : "text-gray-300 cursor-not-allowed"}  `} onClick={()=>{if(zoomTarget.current < ZOOM_MAX) zoomTarget.current+=0.2}}>
         
@@ -1076,8 +1079,7 @@ function Vinyls({constellationMode, loggedIn, userId} : {constellationMode : boo
                     fontSize={constellationMode ? LABEL_HEIGHT*disc.size*zoom : LABEL_HEIGHT*zoom}
                     fontFamily="Noto Serif, Noto Sans JP, Noto Sans KR, Noto Sans TC"
                     width={(LABEL_WIDTH-100)*zoom}
-                    ellipsis={true}
-                    wrap="none"
+                    wrap="word"
                     opacity={disc.opacity}
                     align="center"
                     fill={constellationMode ? '#e5e5e5' : '#757575'}
@@ -1338,8 +1340,31 @@ function Tutorial({darkMode} : {darkMode : boolean}){
   </>
 }
 
+function Intro({hideIntro} : {hideIntro : ()=>void}){
+  const setSelectedSong = useContext(SongContext).setValue
 
-function Map({loggedIn, handleLogout, userId, defaultConstellationState} : {loggedIn : boolean, handleLogout : ()=>void, userId : string | null, defaultConstellationState : boolean}){
+
+  return <div className="z-50 absolute top-0 left-0 w-screen h-screen flex items-center justify-center bg-white">
+    <div style={{height: 400}}>
+      <SearchBar 
+        disable={false} 
+        defaultSearch={""} 
+        onChange={()=>{}} 
+        boxWidth={600} 
+        type="track" 
+        growDown={true} 
+        light={false} 
+        placeholder="Search for any track!" 
+        onClick={(data)=>{
+          setSelectedSong(data)
+          hideIntro()
+        }}
+      ></SearchBar>
+    </div>
+  </div>
+}
+
+function Map({loggedIn, handleLogout, userId, defaultConstellationState, showIntro, hideIntro} : {loggedIn : boolean, handleLogout : ()=>void, userId : string | null, defaultConstellationState : boolean, showIntro : boolean, hideIntro : ()=>void}){
   const NULL_SONG = {name : "", author : "", album : "", id : "", play : false}
   const [selectedSong, setSelectedSong] = useState<Song>(NULL_SONG)    
   const [playerVolume, setPlayerVolume] = useState(50)
@@ -1353,7 +1378,9 @@ function Map({loggedIn, handleLogout, userId, defaultConstellationState} : {logg
 
   return (
     <SongContext.Provider value={{value : selectedSong, setValue : setSelectedSong}}>
-      <div className={`w-screen h-screen flex flex-col justify-between p-16  ${constellationMode ? "bg-black" : "bg-white"}`}>
+      {showIntro && <Intro hideIntro={hideIntro}></Intro>}
+      <div className={`w-screen h-screen flex flex-col justify-between p-16  ${constellationMode ? "bg-black" : "bg-white"} transition-opacity duration-500 ${showIntro ? "opacity-0" : ""}`}>
+        
         <div className="flex justify-between items-start">
           <Player darkMode={constellationMode}></Player>
           {!defaultConstellationState && <button onClick={handleLogout} className={`z-10 ${constellationMode ? "bg-black text-white border-[#887880] hover:border-white" : "bg-white text-gray-700 hover:border-[#887880]"} border-2 p-2 h-12 rounded-md cursor-pointer`}>Log Out</button>}
@@ -1472,6 +1499,8 @@ export default function App() {
   const [playerWidth, setPlayerWidth] = useState(0)
   const [loggedIn, setLoggedIn] = useState(false)
   const [userId, setUserId] = useState(currentParams.get('constellation'))
+  const [showIntro, setShowIntro] = useState(false)
+
   useEffect(()=>{
     if(!viewConstellation){
       axios({
@@ -1494,35 +1523,43 @@ export default function App() {
     setFadeIn(true)
     setShowMap(true)
     setTimeout(()=>{setShowHome(false)}, 500)
+    console.log(localStorage.getItem('visited'))
+    if(!localStorage.getItem('visited')){
+      setShowIntro(true)
+      localStorage.setItem('visited', 'true')
+    }
   }
   return (
     <PlayerContext.Provider value={{value: player, setValue: setPlayer, maxWidth:playerWidth, setMaxWidth:setPlayerWidth}}>
       <div className="overflow-hidden w-screen h-screen">
         <div className={`duration-500 transition ${fadeIn ? "-translate-y-[10%] opacity-0" : ""} ${showHome ? "" : "display-none"}`}>
-          {<Home signInHandler={signIn
-            }></Home>}  
+          {<Home signInHandler={signIn}></Home>}  
         </div>
         <div className={`overflow-hidden absolute top-0 duration-500 transition  ${fadeIn ? "" : "opacity-0 -translate-y-[10%]"}`}>
-          {showMap && <Map handleLogout={()=>{
-            setFadeIn(false)
-            setShowHome(true)
-            //setTimeout(()=>{setShowMap(false)}, 500)
-            setShowMap(false) //Instantly, otherwise looks dumb
-            if(player) player.disconnect()
-            setPlayer(null)
-            
-            //if(loggedIn){
-              //window.open("https://accounts.spotify.com/en/status")
-            //}
-            setLoggedIn(false)
-            setUserId(currentParams.get('constellation'))
+          {showMap && <Map 
+            handleLogout={()=>{
+              setFadeIn(false)
+              setShowHome(true)
+              //setTimeout(()=>{setShowMap(false)}, 500)
+              setShowMap(false) //Instantly, otherwise looks dumb
+              if(player) player.disconnect()
+              setPlayer(null)
+              
+              //if(loggedIn){
+                //window.open("https://accounts.spotify.com/en/status")
+              //}
+              setLoggedIn(false)
+              setUserId(currentParams.get('constellation'))
 
-            document.cookie = `spotify_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`
+              document.cookie = `spotify_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`
 
             }}
             defaultConstellationState={viewConstellation}
             loggedIn={loggedIn}
-            userId={userId}></Map> /**/} 
+            userId={userId}
+            showIntro={showIntro}
+            hideIntro={()=>{setShowIntro(false)}}
+            ></Map> /**/} 
         </div>
       </div>
     </PlayerContext.Provider>

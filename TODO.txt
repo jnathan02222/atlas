@@ -138,10 +138,6 @@ Regenerate button DONE
 
 Larger search radius (probably easier to do backend) DONE
 Backend error handling DONE?
-Lock frontend
-Refresh token 
-Make it so that you can see full label
-Add data to db
 Fix uncharted territory bug DONE
 
 Sharing DONE
@@ -149,3 +145,10 @@ Sharing DONE
 	Require login, but go straight to constellation page NO
     - Instead signs in for you but to viewer only
 	Clicking on map opens a new tab YES
+
+Make it so that you can see full label DONE
+Search bar intro NOT SURE IF HAPPY WITH IT
+Lock frontend DONE 
+    Well we could also do the disks
+Refresh token 
+Add data to db
