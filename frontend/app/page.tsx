@@ -1537,10 +1537,9 @@ export default function App() {
   function refreshToken(){
     axios({method: 'get', url: '/api/refresh-token'})
   }
-  
+
   useEffect(()=>{
     if(loggedIn){
-      refreshToken()
       refreshIntervalRef.current = setInterval(refreshToken, 30*60*1000) //Every 30 minutes
     }
     return ()=>{
