@@ -1513,12 +1513,9 @@ export default function App() {
 
   const refreshIntervalRef = useRef<any>(null)
 
-  function refreshToken(){
-    axios({method: 'get', url: '/api/refresh-token'})
-  }
+  
 
   useEffect(()=>{
-    
     if(!viewConstellation){
       axios({
         method: 'get',
@@ -1526,8 +1523,7 @@ export default function App() {
       }).then(
         response => {
           if(response.data.logged_in){
-            refreshToken()
-            refreshIntervalRef.current = setInterval(refreshToken, 30*60*1000) //Every 30 minutes
+           
             signIn()
             setLoggedIn(true)
             setUserId(response.data.id)
@@ -1535,9 +1531,23 @@ export default function App() {
         }
       )
     }
-    return ()=>{clearInterval(refreshIntervalRef.current)}
+    
   }, [])
   
+  function refreshToken(){
+    axios({method: 'get', url: '/api/refresh-token'})
+  }
+  
+  useEffect(()=>{
+    if(loggedIn){
+      refreshToken()
+      refreshIntervalRef.current = setInterval(refreshToken, 30*60*1000) //Every 30 minutes
+    }
+    return ()=>{
+      clearInterval(refreshIntervalRef.current)
+    }
+  },[loggedIn])
+
   function signIn(){
     setFadeIn(true)
     setShowMap(true)
