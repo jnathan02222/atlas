@@ -57,6 +57,16 @@ const SearchBar = ({boxWidth, growDown, light, placeholder, type, onClick, onCha
   const [searchResults, setSearchResults] = useState<Array<Song>>([])
   const latestTimestamp = useRef(0)
   
+
+  useEffect(()=>{
+    function handleClick(e : MouseEvent){
+      setSearchResults([])
+      
+    }
+    window.addEventListener('click', handleClick)
+    return ()=>{window.removeEventListener('click', handleClick)}
+  },[])
+
   //Use latest timestamp to ensure latest result is used
   function setCurrentSearchResults(results : Array<Song>, timestamp : number){
     if(timestamp > latestTimestamp.current){
@@ -1501,7 +1511,14 @@ export default function App() {
   const [userId, setUserId] = useState(currentParams.get('constellation'))
   const [showIntro, setShowIntro] = useState(false)
 
+  const refreshIntervalRef = useRef<any>(null)
+
+  function refreshToken(){
+    axios({method: 'get', url: '/api/refresh-token'})
+  }
+
   useEffect(()=>{
+    
     if(!viewConstellation){
       axios({
         method: 'get',
@@ -1509,6 +1526,8 @@ export default function App() {
       }).then(
         response => {
           if(response.data.logged_in){
+            refreshToken()
+            refreshIntervalRef.current = setInterval(refreshToken, 30*60*1000) //Every 30 minutes
             signIn()
             setLoggedIn(true)
             setUserId(response.data.id)
@@ -1516,14 +1535,13 @@ export default function App() {
         }
       )
     }
-    
+    return ()=>{clearInterval(refreshIntervalRef.current)}
   }, [])
   
   function signIn(){
     setFadeIn(true)
     setShowMap(true)
     setTimeout(()=>{setShowHome(false)}, 500)
-    console.log(localStorage.getItem('visited'))
     if(!localStorage.getItem('visited')){
       setShowIntro(true)
       localStorage.setItem('visited', 'true')
@@ -1552,7 +1570,7 @@ export default function App() {
               setUserId(currentParams.get('constellation'))
 
               document.cookie = `spotify_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`
-
+              
             }}
             defaultConstellationState={viewConstellation}
             loggedIn={loggedIn}

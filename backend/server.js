@@ -370,22 +370,24 @@ app.get('/api/region-name', async (req, res) => {
 })  
 
 // /api/login-state
-app.get('/api/login-state', (req, res) => {
-  axios({
-    method: 'get',
-    url : `https://api.spotify.com/v1/me`,
-    headers: {
-      'Authorization': 'Bearer ' + req.cookies['spotify_token'],
-    }
-  }).then(
-    (response) => {
+app.get('/api/login-state', async (req, res) => {
+  try {
+    const response = await axios({
+      method: 'get',
+      url : `https://api.spotify.com/v1/me`,
+      headers: {
+        'Authorization': 'Bearer ' + req.cookies['spotify_token'],
+      }
+    })
+    const timeSpent = (new Date()).getTime() - (new Date(req.cookies['spotify_token_date'])).getTime()
+    if(timeSpent < 1000*60*60){ //Less than 1 hour
       res.json({logged_in : true, id : response.data.id})
+      return
     }
-  ).catch(
-    (error)=>{
-      res.json({logged_in : false})
-    }
-  )
+  }catch (error){
+
+  } 
+  res.json({logged_in : false})
 })
 
 // /api/play-track
@@ -451,7 +453,8 @@ app.get('/api/callback', (req, res) => {
     }).then(
       (response) => {
         res.cookie('spotify_token', response.data.access_token);
-        //res.cookie('spotify_refresh_token', response.data.refresh_token)
+        res.cookie('spotify_refresh_token', response.data.refresh_token)
+        res.cookie('spotify_token_date', new Date())
         res.redirect(process.env.WEBSITE_URL)
       }
     ).catch(
@@ -562,6 +565,31 @@ app.get('/api/constellation', async (req, res) => {
   }
 })
 
+app.get('/api/refresh-token', async (req, res) => {
+  try{
+    const response = await axios({
+      method: 'post',
+      url: 'https://accounts.spotify.com/api/token',
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(client_id + ':' + client_secret).toString('base64'),
+      },
+      data: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: req.cookies['spotify_refresh_token']
+      }).toString(),
+    })
+    res.cookie('spotify_token', response.data.access_token)
+    res.cookie('spotify_token_date', new Date())
+
+    res.end()
+  }catch(error){
+    console.error(`${"GET /api/refresh-token"} ${error}`)
+    res.status(500).json({error: "Something went wrong."})
+  }
+})
+
 app.listen(8888, ()=>{
   console.log("Listening on 8888")
 })
+
+
