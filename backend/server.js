@@ -372,7 +372,7 @@ app.get('/api/region-name', async (req, res) => {
 // /api/login-state
 app.get('/api/login-state', async (req, res) => {
   try {
-    const response = await axios({
+    var response = await axios({
       method: 'post',
       url: 'https://accounts.spotify.com/api/token',
       headers: {
@@ -384,6 +384,14 @@ app.get('/api/login-state', async (req, res) => {
       }).toString(),
     })
     res.cookie('spotify_token', response.data.access_token)
+
+    response = await axios({
+      method: 'get',
+      url : `https://api.spotify.com/v1/me`,
+      headers: {
+        'Authorization': 'Bearer ' + response.data.access_token,
+      }
+    })
     res.json({logged_in : true, id : response.data.id})
   }catch (error){
     res.json({logged_in : false})
