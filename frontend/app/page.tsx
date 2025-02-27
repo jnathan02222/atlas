@@ -1579,7 +1579,8 @@ export default function App() {
               setUserId(currentParams.get('constellation'))
 
               document.cookie = `spotify_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`
-              
+              document.cookie = `spotify_refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`
+
             }}
             defaultConstellationState={viewConstellation}
             loggedIn={loggedIn}
