@@ -173,7 +173,7 @@ function Home({signInHandler} : {signInHandler : ()=> void}){
         <img src="/Full_Logo_Black_RGB.svg" draggable="false" className="h-6"></img>
         <h1 className="text-black text-8xl">Atlas</h1>
         <div className="flex">
-          <a href={`/api/login`} className="transition-colors duration-300 hover:border-[#887880] border-2 p-2 mt-2 rounded-md text-gray-700  cursor-pointer" >Sign In</a>
+          {/*<a href={`/api/login`} className="transition-colors duration-300 hover:border-[#887880] border-2 p-2 mt-2 rounded-md text-gray-700  cursor-pointer" >Sign In</a>*/}
           <button onClick={signInHandler} className="transition-colors duration-300 hover:border-[#887880] border-2 p-2 ml-2 mt-2 rounded-md text-gray-700  cursor-pointer">Guest</button>
         </div>
 
@@ -1364,7 +1364,7 @@ function Intro({hideIntro} : {hideIntro : ()=>void}){
         type="track" 
         growDown={true} 
         light={false} 
-        placeholder="Search for any track!" 
+        placeholder="Search for any track! (hint: try Real Man by beabadoobee)" 
         onClick={(data)=>{
           setSelectedSong(data)
           hideIntro()
