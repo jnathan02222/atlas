@@ -173,8 +173,8 @@ function Home({signInHandler} : {signInHandler : ()=> void}){
         <img src="/Full_Logo_Black_RGB.svg" draggable="false" className="h-6"></img>
         <h1 className="text-black text-8xl">Atlas</h1>
         <div className="flex">
-          {/*<a href={`/api/login`} className="transition-colors duration-300 hover:border-[#887880] border-2 p-2 mt-2 rounded-md text-gray-700  cursor-pointer" >Sign In</a>*/}
-          <button onClick={signInHandler} className="transition-colors duration-300 hover:border-[#887880] border-2 p-2 ml-2 mt-2 rounded-md text-gray-700  cursor-pointer">Guest</button>
+          {/*<a href={`/api/login`} className="transition-colors duration-300 hover:border-[#887880] border-2 p-2 mt-2 mr-2 rounded-md text-gray-700  cursor-pointer" >Sign In</a>*/}
+          <button onClick={signInHandler} className="transition-colors duration-300 hover:border-[#887880] border-2 p-2  mt-2 rounded-md text-gray-700  cursor-pointer">Guest</button>
         </div>
 
       </div>
