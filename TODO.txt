@@ -1,0 +1,154 @@
+Good things to put on resume
+//Determine next search term (word2Vec) after all promises resolve
+//Make call to database to update word list and tick up counter for songs 
+
+OVERALL SUMMARY 
+-Guest search DONE
+
+-Display 
+    -Creating data structures DONE
+    -Forces (add connection lines, smooth center camera) DONE
+        Damping/Cooling Factor / Threshold for Stopping DONE
+        Force Strengths / Additional Forces or Constraints DONE
+        Starting point DONE
+        Integration method DONE?
+    -Interactions (size increase, spawn in transition) DONE
+    -(backend returns track) + clicking DONE 
+    -hover info + Lettering DONE
+
+-Add a velocity limit? Check that this is not buggy? DONE
+    -Integration method DONE
+    -Fixed animationframe bug DONE
+
+-Improve generation to not cause two things to shoot away (or set a cap on velocity / collision detection) DONE
+-Scroll to change scale of canvas? Drag to move camera? DONE 
+-Make Vinyls fade if close to 0, 0 DONE 
+-Volume button DONE
+-Further improve simulation (with collision  + mix blend move?) DONE?
+
+LOG elastics? Use Manjeet's code
+-Bug - panyolo color not going through (multiple music ids) DONE 
+    -Unrelated bug: seems to try to play it twice at the start of a queued song DONE (grabs current track from backend to see if there is a change, if so change selected song, but don't play)
+    -Sometimes you click and it doubles back? DON'T QUEUE REQUESTS IF ONE ALREADY EXISTS (PROBABLY FINE)
+        -Other requests should probably also lock interactions EH
+-Bug -private playlists should not be submittable DONE
+-Highlight 5 correlations DONE 
+-Preload images DONE
+-Something wrong with fading DONE
+    -Cannot read id
+-Error handling + logged out message 
+-Fade out labels 
+-Make numbers mean something?
+
+-Embeddings + vector database (AWS hosting) DONE
+    -Store in vector db DONE
+-K clustering + display text (k means++, k means, silhouette) DONE
+    -Search by keyword
+EXTRA: sync up with others? maybe the discs should always spawn in the same place 
+-Reset decay so that you can drag discs?
+-Shortest path?
+-Render distance?
+-Hometown / constellation 
+-? mark button
+Migrate to graph db
+
+Readjust playlist storage DONE
+Best descriptor endpoint: get all playlists, get all vectors, cluster and then get nearest neighbour of centroid DONE
+
+FEEDBACK
+Scroll
+Submit message DONE
+Line Highlights DONE 
+Increase contrast on wood texture / colors
+
+
+
+
+
+
+Contribute
+-Show search bar when button is clicked DONE
+-Search bar shows playlists DONE
+-Show playlist songs when contributing DONE
+-When one is submitted, lock frontend  DONE
+-Tell backend to write into db DONE (COULD BE OPTIMIZED)
+-Logout should stop music DONE
+
+Search 
+-Search bar shows songs DONE
+-Search without sign in + backend error handling <---
+    -Auto sign in if cookie works, store whether in guest mode somewhere <or maybe just check with backend>? DONE
+    -Log out? DONE
+-On click (or enter for keyword), send text or track id to backend <---
+-Backend returns neighbours DONE
+
+Player
+-Do it on successful search? DONE
+-Randomized coordinates for now? DONE
+-Long titles move side to side DONE
+-Read for error handling: https://developer.spotify.com/documentation/web-playback-sdk
+-Interactions when something else is playing? DONE
+
+
+Display <---
+-Favicon
+-Given a list of tracks, their relations, attempt to render 
+-On click, add those neighbours too
+-Hover to show information
+-Big label to say the region
+-When a vinyl is clicked start playing music and update text / location  
+
+Extra
+-Explainer (?) button 
+    -Genre Space Coordinate 
+    -Contributions
+    -Vector database
+-Pausing/playing music?
+-Really good documentation (backend endpoints and code flow, database interactions)
+-Mobile styling 
+-Logged out message / error handling?
+-Change volume
+
+Embeddings
+-SPOTIFY HOMETOWN
+    -Get top songs, take best summaries (see below) and apply k-cluster for biggest set
+-Script to go through all unique playlists and get embedding, store in vector database (only has to run if it's not in the DB)
+-Script to take a song, get all the playlists it's in and get the best descriptor of it using k cluster, then store it
+    -Either of these last two may be done in the contribute and neighbours endpoints instead
+-Advanced feature: regional summary of many songs together (zoom out)
+-Word neighbours mode vs. corrlelation neighbours
+
+greek
+spotify
+serif
+website
+stars
+maps
+
+must use computer
+must have email ready
+so it's a map (with embeddings summary?)
+contribution
+jams should work in theory 
+
+
+Constellation label DONE
+Name label DONE
+Regenerate button DONE
+
+Larger search radius (probably easier to do backend) DONE
+Backend error handling DONE?
+Fix uncharted territory bug DONE
+
+Sharing DONE
+	Preserve url parameters in callback NAH
+	Require login, but go straight to constellation page NO
+    - Instead signs in for you but to viewer only
+	Clicking on map opens a new tab YES
+
+Make it so that you can see full label DONE
+Search bar intro NOT SURE IF HAPPY WITH IT
+Lock frontend DONE 
+    Well we could also do the disks
+Refresh token 
+Add data to db
