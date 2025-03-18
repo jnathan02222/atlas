@@ -1,4 +1,4 @@
-# Project Name
+# Atlas
 
 ## Description
 An open source map of Spotify tracks and their relationships
