@@ -4,7 +4,7 @@
 An open source map of Spotify tracks and their relationships
 Hosted at [spotifyatlas.com](https://spotifyatlas.com/)
 
-![image](https://github.com/user-attachments/assets/787c8f71-aea4-4cd6-8420-88b9c914cb66)
+![image](https://github.com/user-attachments/assets/ebcb37a2-8b61-4f63-bc83-0d3b665f4f13)
 
 ## Features
 - A force-directed graph showing songs and their relationships
