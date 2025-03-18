@@ -2,7 +2,7 @@
 
 ## Description
 An open source map of Spotify tracks and their relationships
-Hosted at [spotifyatlas.com](spotifyatlas.com)
+Hosted at [spotifyatlas.com](https://spotifyatlas.com/)
 
 ## Features
 - A force-directed graph showing songs and their relationships
@@ -14,17 +14,4 @@ Hosted at [spotifyatlas.com](spotifyatlas.com)
 - Live music playback
 
 ## Installation
-### Prerequisites
-- Requirement 1
-- Requirement 2
-
-### Setup
-```bash
-# Clone the repository
-git clone https://github.com/username/repo.git
-
-# Navigate to the project directory
-cd repo
-
-# Install dependencies
-npm install
+To be written...
