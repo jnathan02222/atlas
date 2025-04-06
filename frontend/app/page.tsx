@@ -1377,8 +1377,8 @@ function Contribute({darkMode} : {darkMode : boolean}){
                       tracks.map(
                         (track : Song, i) => {
                           return (<div className=" mt-2" key={i}>
-                            <a target="_blank" href={track.url.track} className={` text-nowrap truncate text-ellipsis ${disable ? "text-[#887880]" : "text-white"}`}>{track.name}</a>
-                            <h2 className={`text-xs text-nowrap truncate text-ellipsis ${disable ? "text-[#887880]" : "text-gray-300"}`} >
+                            <a target="_blank" href={track.url.track} className={` text-nowrap  ${disable ? "text-[#887880]" : "text-white"}`}>{track.name}</a>
+                            <h2 className={`text-xs text-nowrap  ${disable ? "text-[#887880]" : "text-gray-300"}`} >
                               {
                               track.author.map((a, i) => <a target="_blank" key={i} href={track.url.artist[i]}>{`${i > 0 ? ", " : ""} ${a}`}</a>)
                               }
@@ -1401,7 +1401,7 @@ function Contribute({darkMode} : {darkMode : boolean}){
                         /* width */
                         ::-webkit-scrollbar {
                           width: 10px;
-                          height: 10px;
+                          height: 9px;
                         }
 
                         /* Track */
