@@ -123,7 +123,7 @@ const SearchBar = ({boxWidth, growDown, light, placeholder, type, onClick, onCha
               album : "",
               play : false,
               url: {
-                track: "",
+                track: item.external_urls.spotify,
                 artist: [],
                 album: ""
               }
@@ -1321,9 +1321,13 @@ function Contribute({darkMode} : {darkMode : boolean}){
           <div className="top-0 left-0 absolute w-screen h-screen bg-black flex justify-center items-start pt-48">
 
               <div className="z-10">
-                <a href="https://open.spotify.com/" target="_blank">
-                  <img src="/Full_Logo_White_RGB.svg" draggable="false" className="h-5 z-20 -mt-8 opacity-50 absolute"></img>
-                </a>
+                <div className="flex items-center gap-2 text-[#887880] h-8">
+                  <a href="https://open.spotify.com/" target="_blank">
+                    <img src="/Full_Logo_White_RGB.svg" draggable="false" className="h-5 z-20 opacity-50"></img>
+                  </a>
+                  {playlist && <a href={playlist.url.track} target="_blank" className="text-sm">- Open Playlist</a>}
+                </div>
+                
 
                 <SearchBar onChange={
                   ()=>{
