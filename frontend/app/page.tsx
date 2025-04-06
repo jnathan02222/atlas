@@ -11,10 +11,12 @@ import VolumeOffIcon from '@mui/icons-material/VolumeOff'
 //https://coolors.co/cb3342-686963-8aa29e-3d5467-f1edee
 //https://coolors.co/8a4f7d-887880-88a096-bbab8b-ef8275
 
-const SongContext = createContext({value : {name : "", author : "", album : "", id : "", play : false}, setValue : (val : Song | ((song: Song) => Song))=>{}})
-const PlayerContext = createContext({value: null, setValue : (prev : any) => {}, maxWidth : 0, setMaxWidth : (prev : number) => {}})
 
-type Song = {name : string, author : string, album : string, id : string, play : boolean}
+type Song = {name : string, author : Array<string>, album : string, id : string, play : boolean, url : SongURL}
+type SongURL = {track: string, album: string, artist: Array<string>}
+
+const SongContext = createContext({value : {name : "", author : [""], album : "", id : "", play : false, url : {track: "", album: "", artist: [""]}}, setValue : (val : Song | ((song: Song) => Song))=>{}})
+const PlayerContext = createContext({value: null, setValue : (prev : any) => {}, maxWidth : 0, setMaxWidth : (prev : number) => {}})
 
 //Math util
 function getCombinations(list : Array<any>) {
@@ -103,19 +105,28 @@ const SearchBar = ({boxWidth, growDown, light, placeholder, type, onClick, onCha
             if(type === "track"){
               return {
                 name : item.name, 
-                author : item.artists.map((artist : Record<string, any>) => artist.name).join(", "),
+                author : item.artists.map((artist : Record<string, any>) => artist.name),
                 id : item.id,
                 album : item.album.name,
-                play : true
+                play : true,
+                url: {
+                  track: item.external_urls.spotify,
+                  artist: item.artists.map((artist : Record<string, any>) => artist.external_urls.spotify),
+                  album: item.album.external_urls.spotify
+                }
               }
             }
             return {
               name : item.name, 
-              author : item.owner.display_name,
+              author : [item.owner.display_name],
               id : item.id,
               album : "",
-              play : false
-
+              play : false,
+              url: {
+                track: "",
+                artist: [],
+                album: ""
+              }
             }
           }
         ), timestamp)
@@ -123,7 +134,7 @@ const SearchBar = ({boxWidth, growDown, light, placeholder, type, onClick, onCha
   }
   function results(){
     return (searchResults.length > 0 && 
-      <div className={` border-2 rounded-md  ${light ? "border-[#887880]" : "bg-white"} ${growDown ? "border-t-0 rounded-t-none" : "border-b-0 rounded-b-none pt-0"}`} style={{width: boxWidth}}>
+      <div className={`absolute border-2 rounded-md  ${light ? "border-[#887880]" : "bg-white"} ${growDown ? "border-t-0 rounded-t-none " : "-translate-y-full border-b-0 rounded-b-none pt-0"}`} style={{width: boxWidth}}>
       {
         searchResults.map(
           (data : Song, i : number) => {
@@ -131,12 +142,12 @@ const SearchBar = ({boxWidth, growDown, light, placeholder, type, onClick, onCha
               e.preventDefault()
               setCurrentSearchResults([], Date.now())
               onClick(data)
-              setQuery(`${data.name} - ${data.author}`)
+              setQuery(`${data.name} - ${data.author.join(", ")}`)
 
               }} className={`flex text-left w-full p-2  ${growDown ? "" : ""}  ${light ? "text-white hover:bg-gray-900" : "text-black hover:bg-gray-100"}`} key={i}>
               <div className="text-ellipsis truncate text-nowrap min-w-0">{data.name}</div>
               <div className="pl-2 pr-2">-</div>
-              <div className="text-ellipsis text-nowrap truncate min-w-36">{data.author}</div>
+              <div className="text-ellipsis text-nowrap truncate min-w-36">{data.author.join(", ")}</div>
 
             </button>)
           }
@@ -170,7 +181,10 @@ function Home({signInHandler} : {signInHandler : ()=> void}){
         <div className="rounded-full bg-white border-4	border-[#EF8275] w-[2%] aspect-square absolute"></div>
       </div>
       <div className="flex flex-col items-start absolute ml-[60%]">
-        <img src="/Full_Logo_Black_RGB.svg" draggable="false" className="h-6"></img>
+        <a className="z-10" href="https://open.spotify.com/" target="_blank">
+          <img src="/Full_Logo_Black_RGB.svg" draggable="false" className="h-6"></img>
+
+        </a>
         <h1 className="text-black text-8xl">Atlas</h1>
         <div className="flex">
           <a href={`/api/login`} className="transition-colors duration-300 hover:border-[#887880] border-2 p-2 mt-2 mr-2 rounded-md text-gray-700  cursor-pointer" >Sign In</a>
@@ -227,12 +241,10 @@ function Marquee({marqueeWidth, edgeWidth, height, endPause, selectedSong, child
   }, [selectedSong])
 
   return (
-    <div className={`flex`} style={{ transform: `translateX(${-edgeWidth*2}px)` }}>
-      <div style={{width: edgeWidth, transform: `translateX(${edgeWidth}px)`}} className={` ${showSide ? `transition-all duration-300 bg-gradient-to-l from-transparent ${darkMode ? "via-black to-black" : "via-white to-white"}` : ""} z-10 `}></div>
-      <div className={`text-nowrap overflow-x-hidden`} style={{width: marqueeWidth, height: height}}> 
+    <div className={`flex`} style={{ transform: `translateX(${-edgeWidth}px)` }}>
+      <div className={`text-nowrap overflow-x-hidden`} style={{width: marqueeWidth, height: height, maskImage: 'linear-gradient(to right, transparent 5%, black 10%, black 90%, transparent 95%)'}}> 
         <div ref={sliderRef} className="w-fit" style={{ transform: `translateX(${position}px)` }}>{children}</div>
       </div>
-      <div style={{width: edgeWidth, transform: `translateX(${-edgeWidth}px)`}} className={`${showSide ? `transition-all duration-300 bg-gradient-to-r from-transparent ${darkMode ? "via-black to-black" : "via-white to-white"}` : ""}`}></div>
     </div>
   )
 }
@@ -249,7 +261,7 @@ function Player({darkMode} : {darkMode : boolean}){  //<div className="bg-black 
 
   const animationRef = useRef(0)
   const actualCoordinates = useRef({x: 0, y: 0})
-  const nameRef = useRef<HTMLHeadingElement>(null)
+  const nameRef = useRef<HTMLAnchorElement>(null)
   const authorRef = useRef<HTMLHeadingElement>(null)
 
   useEffect(()=>{
@@ -361,7 +373,17 @@ function Player({darkMode} : {darkMode : boolean}){  //<div className="bg-black 
                 if(!prev || !current_track || prev.id === current_track.id){
                   return prev
                 }
-                return {name : current_track.name, author : current_track.artists.map((artist : Record<string, any>)=>artist.name).join(", "), album : current_track.album.name, id : current_track.id, play : false}
+                return {
+                  name : current_track.name, 
+                  author : current_track.artists.map((artist : Record<string, any>)=>artist.name), 
+                  album : current_track.album.name, 
+                  id : current_track.id, play : false,
+                  url : {
+                    track: current_track.external_urls.spotify,
+                    artist: current_track.artists.map((artist : Record<string, any>)=>artist.external_urls.spotify),
+                    album: current_track.album.external_urls.spotify
+                  }
+                }
               }
             )
           })
@@ -375,15 +397,26 @@ function Player({darkMode} : {darkMode : boolean}){  //<div className="bg-black 
 
 
   return (
-       <div className="flex items-center">
+       <div className="z-10 flex items-center">
         {selectedSong.id !== "" &&
         <div className="w-full">
-            
+            <a href="https://open.spotify.com/" target="_blank">
+              <img src={darkMode ? "/Full_Logo_White_RGB.svg" : "/Full_Logo_Black_RGB.svg"} draggable="false" className="h-5 mb-2"></img>
+            </a>
+
             <Marquee darkMode={darkMode} marqueeWidth={600} height={62} edgeWidth={48} endPause={120} selectedSong={selectedSong}>
-              <h1 ref={nameRef} className={`text-5xl w-min ${darkMode ? "text-white" : ""}`} >{selectedSong.name}</h1>
+              <a target="_blank" href={selectedSong.url.track} ref={nameRef} className={`text-5xl w-min ${darkMode ? "text-white" : ""}`} >{selectedSong.name}</a>
             </Marquee>
             <Marquee darkMode={darkMode} marqueeWidth={600} height={25} edgeWidth={48} endPause={120} selectedSong={selectedSong}>
-              <h2 className={`${darkMode ? "text-white" : ""}`} ref={authorRef}>{`${selectedSong.author} - ${selectedSong.album}`}</h2>
+              <h2 className={`${darkMode ? "text-white" : ""}`} ref={authorRef}>
+                {
+                  selectedSong.author.map((a, i) => <a key={i} href={selectedSong.url.artist[i]} target="_blank">{`${i > 0 ? ", " : ""} ${a}`}</a>)
+                }
+                {" - "}
+                {
+                  <a target="_blank" href={selectedSong.url.album}>{selectedSong.album}</a>
+                }
+              </h2>
             </Marquee>
 
             <h2 className={`pt-2 ${darkMode ? "text-gray-300" : "text-gray-500"}`}>{`${coordinates.x}, ${coordinates.y}`}</h2>
@@ -479,7 +512,18 @@ function Vinyls({constellationMode, loggedIn, userId} : {constellationMode : boo
         velocity : {x : 0, y : 0}, 
         acceleration : {x : 0, y : 0}, 
         opacity : 0,
-        song : {name : track.name, author : track.artists.map((artist : Record<string, any>) => artist.name).join(', '), album : track.album.name, id : track.id, play : true},
+        song : {
+          name : track.name, 
+          author : track.artists.map((artist : Record<string, any>) => artist.name), 
+          album : track.album.name, 
+          id : track.id, 
+          play : true,
+          url : {
+            track: track.external_urls.spotify,
+            artist: track.artists.map((artist : Record<string, any>)=>artist.external_urls.spotify),
+            album: track.album.external_urls.spotify
+          }
+        },
         size : 0.35 - response.data.rankings[track.id]/100, 
         movementDamp : 0.5
       }
@@ -523,7 +567,18 @@ function Vinyls({constellationMode, loggedIn, userId} : {constellationMode : boo
           tracks: trackIds
         }
       })
-      updatedDiscs[labelTag].song = {name : response.data.name, album : "", author : "", id : "", play : false} 
+      updatedDiscs[labelTag].song = {
+        name : response.data.name, 
+        album : "", 
+        author : [], 
+        id : "", 
+        play : false,
+        url : {
+          track: "",
+          artist: [],
+          album: ""
+        }
+      } 
       updatedDiscs[labelTag].x = average(...trackIds.map(id => updatedDiscs[id].x))
       updatedDiscs[labelTag].y = average(...trackIds.map(id => updatedDiscs[id].y))
       updatedDiscs[labelTag].size = 0.5
@@ -608,7 +663,18 @@ function Vinyls({constellationMode, loggedIn, userId} : {constellationMode : boo
     const neighbours : Array<Correlation> = response.data.neighbours 
     const tracks : Record<string, Song> = {}
     response.data.tracks.forEach((track : Record<string, any>)=>{
-      tracks[track.id] = {name : track.name, author : track.artists.map((artist : Record<string, any>) => artist.name).join(', '), album : track.album.name, id : track.id, play : true}
+      tracks[track.id] = {
+        name : track.name, 
+        author : track.artists.map((artist : Record<string, any>) => artist.name), 
+        album : track.album.name, 
+        id : track.id, 
+        play : true,
+        url : {
+          track: track.external_urls.spotify,
+          artist: track.artists.map((artist : Record<string, any>)=>artist.external_urls.spotify),
+          album: track.album.external_urls.spotify
+        }
+      }
     })
 
     const trackIds = response.data.tracks.map((track : Record<string, any>) => track.id)
@@ -683,7 +749,20 @@ function Vinyls({constellationMode, loggedIn, userId} : {constellationMode : boo
 
       if(label !== ""){
         const labelTag = `_${selectedSong.id}`
-        updatedDisks[labelTag] = getRandomDisk(500, {name : label, album : "", author : "", id : "", play : false})
+        updatedDisks[labelTag] = getRandomDisk(500, 
+          {
+            name : label, 
+            album : "", 
+            author : [], 
+            id : "", 
+            play : false,
+            url : {
+              track: "",
+              artist: [],
+              album: ""
+            }
+          }
+        )
         correlations.current[`${selectedSong.id}:${labelTag}`] = 1
         trackIds.forEach((track : string) => mappedSongs.current.add(track))
 
@@ -781,7 +860,8 @@ function Vinyls({constellationMode, loggedIn, userId} : {constellationMode : boo
   useEffect(()=>{
     cameraLocked.current = true
 
-    function animate(){
+    function animate(){      
+
       //Potentially expensive, look into optimizations
       setRotation(prev => prev + 2.5)
 
@@ -1118,7 +1198,7 @@ function Vinyls({constellationMode, loggedIn, userId} : {constellationMode : boo
 
                   ></Text>
                   <Text
-                    text={disc.song.author}
+                    text={disc.song.author.join(", ")}
                     
                     x={getRenderedX(disc.x)}           
                     y={getRenderedY(disc.y) + ((DISC_SIZE/2)*disc.size + 10 + 16 + 10)*zoom}   //Font size and padding  
@@ -1186,9 +1266,22 @@ function Search({darkMode} : {darkMode : boolean}){
 
     
   return (
-    <>
-      {!darkMode && <SearchBar disable={false} defaultSearch={""} onChange={()=>{}} boxWidth={400} type="track" growDown={false} light={false} placeholder="Search by track" onClick={(data)=>{setSelectedSong(data)}}></SearchBar>}
-    </>
+    
+      !darkMode
+      &&
+      <div className="z-10 flex items-center">
+
+          <SearchBar disable={false} defaultSearch={""} onChange={()=>{}} boxWidth={400} type="track" growDown={false} light={false} placeholder="Search by track" onClick={(data)=>{setSelectedSong(data)}}>
+
+          </SearchBar>
+          <a href="https://open.spotify.com/" target="_blank" className="z-20 -ml-9">
+            <img src="/logo.svg" draggable={false} className="h-6 opacity-25  "></img>
+          </a>
+          
+          
+      </div>
+    
+    
   )
 }
 
@@ -1198,7 +1291,7 @@ function Contribute({darkMode} : {darkMode : boolean}){
   const [fadeIn, setFadeIn] = useState(false)
 
   const [tracks, setTracks] = useState<Array<Song>>([])
-  const [playlist, setPlaylist] = useState({name : "", author : "", album : "", id : ""})
+  const [playlist, setPlaylist] = useState<Song>()
   const [defaultSearch, setDefaultSearch] = useState("");
   const [loading, setLoading] = useState(false)
   const [disable, setDisable] = useState(false)
@@ -1228,6 +1321,10 @@ function Contribute({darkMode} : {darkMode : boolean}){
           <div className="top-0 left-0 absolute w-screen h-screen bg-black flex justify-center items-start pt-48">
 
               <div className="z-10">
+                <a href="https://open.spotify.com/" target="_blank">
+                  <img src="/Full_Logo_White_RGB.svg" draggable="false" className="h-5 z-20 -mt-8 opacity-50 absolute"></img>
+                </a>
+
                 <SearchBar onChange={
                   ()=>{
                     setTracks([])
@@ -1245,14 +1342,24 @@ function Contribute({darkMode} : {darkMode : boolean}){
                       url : `/api/playlist-tracks?id=${data.id}`
                     })
                     setLoading(false)
-
+                    console.log(response.data.items)
                     setTracks(response.data.items.map(
                       (item : Record<string, any>) => {
-                        return {name : item.track.name, author : item.track.artists.map((artist : Record<string, any>)=>artist.name).join(", "), album : item.track.album.name, id: item.track.id}
+                        return {
+                          name : item.track.name, 
+                          author : item.track.artists.map((artist : Record<string, any>)=>artist.name), 
+                          album : item.track.album.name, 
+                          id: item.track.id,
+                          url: {
+                            track: item.track.external_urls.spotify,
+                            artist: item.track.artists.map((artist : Record<string, any>) => artist.external_urls.spotify),
+                            album: item.track.album.external_urls.spotify
+                          }
+                        }
                       }
                     ))
                     setPlaylist(data)
-                    setDefaultSearch(`${data.name} - ${data.author}`)
+                    setDefaultSearch(`${data.name} - ${data.author.join(", ")}`)
                     
                   }
 
@@ -1266,11 +1373,20 @@ function Contribute({darkMode} : {darkMode : boolean}){
                   tracks.length > 0 && 
                   <>
                     <div style={{width : 560}} className="overflow-y-auto h-48  bg-transparent mt-2 border-2 p-2 pt-0 rounded-md text-white border-[#887880]">
-                      { tracks.map(
-                        (track : {name : string, author : string, album : string}, i) => {
+                      { 
+                      tracks.map(
+                        (track : Song, i) => {
                           return (<div className=" mt-2" key={i}>
-                            <h1 className={` text-nowrap truncate text-ellipsis ${disable ? "text-[#887880]" : "text-white"}`}>{track.name}</h1>
-                            <h2 className={` text-xs text-nowrap truncate text-ellipsis ${disable ? "text-[#887880]" : "text-gray-300"}`} >{`${track.author} - ${track.album}`}</h2>
+                            <a target="_blank" href={track.url.track} className={` text-nowrap truncate text-ellipsis ${disable ? "text-[#887880]" : "text-white"}`}>{track.name}</a>
+                            <h2 className={`text-xs text-nowrap truncate text-ellipsis ${disable ? "text-[#887880]" : "text-gray-300"}`} >
+                              {
+                              track.author.map((a, i) => <a target="_blank" key={i} href={track.url.artist[i]}>{`${i > 0 ? ", " : ""} ${a}`}</a>)
+                              }
+                              {" - "}
+                              {
+                                <a target="_blank" href={track.url.album}>{track.album}</a>
+                              }
+                              </h2>
                           </div>)
                         }
                       )}
@@ -1285,6 +1401,7 @@ function Contribute({darkMode} : {darkMode : boolean}){
                         /* width */
                         ::-webkit-scrollbar {
                           width: 10px;
+                          height: 10px;
                         }
 
                         /* Track */
@@ -1375,7 +1492,18 @@ function Intro({hideIntro} : {hideIntro : ()=>void}){
 }
 
 function Map({loggedIn, handleLogout, userId, defaultConstellationState, showIntro, hideIntro} : {loggedIn : boolean, handleLogout : ()=>void, userId : string | null, defaultConstellationState : boolean, showIntro : boolean, hideIntro : ()=>void}){
-  const NULL_SONG = {name : "", author : "", album : "", id : "", play : false}
+  const NULL_SONG = {
+    name : "", 
+    author : [], 
+    album : "", 
+    id : "", 
+    play : false,
+    url : {
+      track: "",
+      artist: [],
+      album: ""
+    }
+  }
   const [selectedSong, setSelectedSong] = useState<Song>(NULL_SONG)    
   const [playerVolume, setPlayerVolume] = useState(50)
   const [savedPlayerVolume, setSavedPlayerVolume] = useState(50)
